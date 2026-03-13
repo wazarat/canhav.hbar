@@ -9,12 +9,15 @@ export interface HCS10AgentConfig {
 }
 
 // Deferred initialization — only called when credentials are available
+// Uses optional @hashgraph-online/standards-sdk when installed
 export async function registerAgentHCS10(
   config: HCS10AgentConfig
 ): Promise<{ topicId: string } | null> {
   try {
-    // Dynamic import to avoid build issues if SDK is not installed
-    const { HCS10Client } = await import("@hashgraph-online/standards-sdk");
+    const sdkPath = "@hashgraph-online/standards-sdk";
+    const mod = await import(/* webpackIgnore: true */ sdkPath).catch(() => null);
+    if (!mod?.HCS10Client) return null;
+    const { HCS10Client } = mod;
 
     const accountId = process.env.HEDERA_ACCOUNT_ID;
     const privateKey = process.env.HEDERA_PRIVATE_KEY;
@@ -30,11 +33,12 @@ export async function registerAgentHCS10(
       operatorKey: privateKey,
     });
 
-    const result = await (hcs10Client as Record<string, unknown>).createAgent?.({
+    const createAgent = (hcs10Client as { createAgent?: (opts: unknown) => Promise<unknown> }).createAgent;
+    const result = createAgent ? await createAgent({
       name: config.name,
       description: config.description,
       capabilities: config.capabilities,
-    });
+    }) : null;
 
     console.log(`[hcs10] Agent registered: ${config.name}`, result);
     return result as { topicId: string } | null;

@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Security
+
+- **Never commit real credentials.** Hedera keys, API keys, and database URLs belong in `.env.local` (or Vercel env vars for production).
+- `.env.local` and `.env` are in `.gitignore` and must stay that way. Copy `.env.example` to `.env.local` and fill in values locally only.
+
 ## Getting Started
 
 First, run the development server:
