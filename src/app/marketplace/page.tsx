@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
@@ -27,56 +27,43 @@ import {
   Zap,
 } from "lucide-react";
 
-const defaultAgents = [
-  {
-    id: "hedera-skills",
-    name: "HederaSkills Agent",
-    description:
-      "Expert Hedera knowledge agent. Ask any question about building on Hedera — HTS, HCS, HSCS, wallets, security, costs, and more.",
-    capabilities: ["hedera-knowledge", "code-examples", "cost-estimation"],
-    pricingUsd: 1.0,
-    capability: "hedera-skills",
-    icon: BookOpen,
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-400/10",
-    rating: 4.8,
-    jobsCompleted: 142,
-  },
-  {
-    id: "market-intel",
-    name: "Market Intel Agent",
-    description:
-      "Institutional-grade Hedera ecosystem analyst. Query 190+ entities across 7 sectors — DeFi, gaming, supply chain, identity, and more.",
-    capabilities: ["market-analysis", "entity-search", "sector-reports"],
-    pricingUsd: 2.0,
-    capability: "market-intel",
-    icon: BarChart3,
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
-    rating: 4.6,
-    jobsCompleted: 87,
-  },
-  {
-    id: "contract-auditor",
-    name: "Contract Auditor Agent",
-    description:
-      "Solidity smart contract auditor specialized in Hedera HSCS. Checks for Hedera-specific pitfalls: tinybar units, HTS precompile, gas limits.",
-    capabilities: ["security-audit", "hedera-specific-checks", "gas-analysis"],
-    pricingUsd: 5.0,
-    capability: "contract-auditor",
-    icon: Shield,
-    color: "text-orange-400",
-    bgColor: "bg-orange-400/10",
-    rating: 4.9,
-    jobsCompleted: 53,
-  },
-];
+type AgentData = {
+  id: string;
+  name: string;
+  description: string;
+  capabilities: string[];
+  pricingUsd: string;
+  capability: string;
+  status: string;
+};
+
+const iconMap: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  "hedera-skills": { icon: BookOpen, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
+  "market-intel": { icon: BarChart3, color: "text-blue-400", bgColor: "bg-blue-400/10" },
+  "contract-auditor": { icon: Shield, color: "text-orange-400", bgColor: "bg-orange-400/10" },
+};
+
+const defaultStats: Record<string, { rating: number; jobsCompleted: number }> = {
+  "hedera-skills": { rating: 4.8, jobsCompleted: 142 },
+  "market-intel": { rating: 4.6, jobsCompleted: 87 },
+  "contract-auditor": { rating: 4.9, jobsCompleted: 53 },
+};
 
 export default function MarketplacePage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [agents, setAgents] = useState<AgentData[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = defaultAgents.filter((a) => {
+  useEffect(() => {
+    fetch("/api/agents")
+      .then((r) => r.json())
+      .then((data) => setAgents(data.agents || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = agents.filter((a) => {
     if (filter !== "all" && a.capability !== filter) return false;
     if (
       search &&
@@ -114,11 +101,7 @@ export default function MarketplacePage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Tabs
-            value={filter}
-            onValueChange={setFilter}
-            className="w-auto"
-          >
+          <Tabs value={filter} onValueChange={setFilter} className="w-auto">
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="hedera-skills">Skills</TabsTrigger>
@@ -128,65 +111,90 @@ export default function MarketplacePage() {
           </Tabs>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((agent) => {
-            const Icon = agent.icon;
-            return (
-              <Card
-                key={agent.id}
-                className="group hover:border-primary/50 transition-all"
-              >
+        {loading ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
                 <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={`h-12 w-12 rounded-lg ${agent.bgColor} flex items-center justify-center`}
-                    >
-                      <Icon className={`h-6 w-6 ${agent.color}`} />
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      <Zap className="h-3 w-3 mr-1" />
-                      Active
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-lg mt-3">{agent.name}</CardTitle>
-                  <CardDescription className="text-sm">
-                    {agent.description}
-                  </CardDescription>
+                  <div className="h-12 w-12 rounded-lg bg-muted mb-3" />
+                  <div className="h-5 bg-muted rounded w-2/3 mb-2" />
+                  <div className="h-4 bg-muted rounded w-full" />
                 </CardHeader>
                 <CardContent>
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {agent.capabilities.map((cap) => (
-                      <Badge key={cap} variant="secondary" className="text-xs">
-                        {cap}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm mb-4">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
-                      <span>{agent.rating}</span>
-                      <span className="mx-1">·</span>
-                      <span>{agent.jobsCompleted} jobs</span>
-                    </div>
-                    <div className="flex items-center gap-1 font-medium">
-                      <DollarSign className="h-3.5 w-3.5" />
-                      {agent.pricingUsd.toFixed(2)}
-                    </div>
-                  </div>
-
-                  <Button className="w-full" size="sm" asChild>
-                    <Link href={`/agents/${agent.capability}`}>
-                      Hire Agent <ArrowRight className="ml-2 h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
+                  <div className="h-8 bg-muted rounded w-full" />
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map((agent) => {
+              const meta = iconMap[agent.capability] || iconMap["hedera-skills"];
+              const stats = defaultStats[agent.capability] || { rating: 4.5, jobsCompleted: 0 };
+              const Icon = meta.icon;
+              const price = parseFloat(agent.pricingUsd) || 1;
 
-        {filtered.length === 0 && (
+              return (
+                <Card
+                  key={agent.id}
+                  className="group hover:border-primary/50 transition-all"
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div
+                        className={`h-12 w-12 rounded-lg ${meta.bgColor} flex items-center justify-center`}
+                      >
+                        <Icon className={`h-6 w-6 ${meta.color}`} />
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        <Zap className="h-3 w-3 mr-1" />
+                        {agent.status === "active" ? "Active" : agent.status}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-lg mt-3">{agent.name}</CardTitle>
+                    <CardDescription className="text-sm">
+                      {agent.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {(agent.capabilities || []).map((cap) => (
+                        <Badge
+                          key={cap}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {cap}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between text-sm mb-4">
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                        <span>{stats.rating}</span>
+                        <span className="mx-1">·</span>
+                        <span>{stats.jobsCompleted} jobs</span>
+                      </div>
+                      <div className="flex items-center gap-1 font-medium">
+                        <DollarSign className="h-3.5 w-3.5" />
+                        {price.toFixed(2)}
+                      </div>
+                    </div>
+
+                    <Button className="w-full" size="sm" asChild>
+                      <Link href={`/agents/${agent.capability}`}>
+                        Hire Agent <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && filtered.length === 0 && (
           <div className="text-center py-16">
             <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-lg font-medium">No agents found</p>

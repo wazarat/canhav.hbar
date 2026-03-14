@@ -24,7 +24,13 @@ import {
   Loader2,
   Zap,
   CheckCircle,
+  ExternalLink,
+  Wallet,
 } from "lucide-react";
+import {
+  useWalletStore,
+  shortenAddress,
+} from "@/lib/stores/wallet-store";
 
 const agentMeta: Record<
   string,
@@ -95,8 +101,7 @@ const agentMeta: Record<
         type: "text",
         required: true,
         label: "Market Intelligence Query",
-        placeholder:
-          "Which DeFi projects have the deepest HTS integration?",
+        placeholder: "Which DeFi projects have the deepest HTS integration?",
         multiline: true,
       },
       {
@@ -125,7 +130,8 @@ const agentMeta: Record<
         type: "text",
         required: true,
         label: "Solidity Source Code",
-        placeholder: "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\ncontract MyContract { ... }",
+        placeholder:
+          "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.24;\n\ncontract MyContract { ... }",
         multiline: true,
       },
       {
@@ -149,6 +155,8 @@ export default function AgentDetailPage({
   const [result, setResult] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState<number | null>(null);
+  const { isConnected, connect, address } = useWalletStore();
 
   if (!agent) {
     return (
@@ -171,6 +179,7 @@ export default function AgentDetailPage({
     setLoading(true);
     setError(null);
     setResult(null);
+    const start = Date.now();
 
     try {
       const res = await fetch("/api/agents/execute", {
@@ -184,6 +193,7 @@ export default function AgentDetailPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Execution failed");
       setResult(data.result);
+      setElapsed(Date.now() - start);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -202,7 +212,6 @@ export default function AgentDetailPage({
         </Button>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Agent Info */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
@@ -240,9 +249,7 @@ export default function AgentDetailPage({
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Jobs Completed
-                    </span>
+                    <span className="text-muted-foreground">Jobs Completed</span>
                     <span>{agent.jobsCompleted}</span>
                   </div>
                 </div>
@@ -262,11 +269,21 @@ export default function AgentDetailPage({
                     HCS Audit Trail
                   </div>
                 </div>
+
+                <div className="pt-2 border-t">
+                  <a
+                    href="https://hashscan.io/testnet"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    View on HashScan <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Hire Form */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
@@ -277,6 +294,25 @@ export default function AgentDetailPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {!isConnected && (
+                  <div className="p-4 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Wallet className="h-4 w-4 text-primary" />
+                      Connect your wallet for the full on-chain experience
+                    </div>
+                    <Button size="sm" variant="outline" onClick={connect}>
+                      Connect
+                    </Button>
+                  </div>
+                )}
+
+                {isConnected && address && (
+                  <div className="p-3 rounded-lg bg-muted/50 flex items-center gap-2 text-xs text-muted-foreground">
+                    <Wallet className="h-3.5 w-3.5 text-primary" />
+                    Connected: {shortenAddress(address)}
+                  </div>
+                )}
+
                 {agent.intakeFields.map((field) => (
                   <div key={field.name}>
                     <label className="text-sm font-medium mb-1.5 block">
@@ -318,9 +354,7 @@ export default function AgentDetailPage({
                         Processing...
                       </>
                     ) : (
-                      <>
-                        Execute — ${agent.pricingUsd.toFixed(2)}
-                      </>
+                      <>Execute — ${agent.pricingUsd.toFixed(2)}</>
                     )}
                   </Button>
                 </div>
@@ -333,9 +367,16 @@ export default function AgentDetailPage({
 
                 {result && (
                   <div className="mt-6 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold text-sm">Agent Response</h3>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold text-sm">Agent Response</h3>
+                      </div>
+                      {elapsed && (
+                        <span className="text-xs text-muted-foreground">
+                          {(elapsed / 1000).toFixed(1)}s
+                        </span>
+                      )}
                     </div>
                     <div className="p-4 rounded-lg border bg-muted/30 text-sm whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto">
                       {result}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
@@ -29,9 +29,49 @@ import {
   BookOpen,
   Shield,
   Wallet,
+  LogIn,
 } from "lucide-react";
+import {
+  useWalletStore,
+  shortenAddress,
+  getHashScanAddressUrl,
+  getHashScanTxUrl,
+} from "@/lib/stores/wallet-store";
 
-const mockAgents = [
+type AgentInfo = {
+  id: number;
+  name: string;
+  capability: string;
+  icon: React.ElementType;
+  color: string;
+  bgColor: string;
+  status: string;
+  jobsCompleted: number;
+  revenue: number;
+  rating: number;
+};
+
+type JobInfo = {
+  id: string;
+  agent: string;
+  task: string;
+  status: string;
+  amount: string;
+  date: string;
+  txHash: string | null;
+  hcsTopicId?: string | null;
+};
+
+const capabilityIcons: Record<
+  string,
+  { icon: React.ElementType; color: string; bgColor: string }
+> = {
+  "hedera-skills": { icon: BookOpen, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
+  "market-intel": { icon: BarChart3, color: "text-blue-400", bgColor: "bg-blue-400/10" },
+  "contract-auditor": { icon: Shield, color: "text-orange-400", bgColor: "bg-orange-400/10" },
+};
+
+const defaultAgents: AgentInfo[] = [
   {
     id: 1,
     name: "HederaSkills Agent",
@@ -70,7 +110,7 @@ const mockAgents = [
   },
 ];
 
-const mockJobs = [
+const defaultJobs: JobInfo[] = [
   {
     id: "job-001",
     agent: "HederaSkills Agent",
@@ -78,7 +118,7 @@ const mockJobs = [
     status: "completed",
     amount: "$1.00",
     date: "2026-03-12",
-    txHash: "0x1a2b..3c4d",
+    txHash: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
   },
   {
     id: "job-002",
@@ -87,7 +127,7 @@ const mockJobs = [
     status: "completed",
     amount: "$2.00",
     date: "2026-03-12",
-    txHash: "0x5e6f..7g8h",
+    txHash: "0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c",
   },
   {
     id: "job-003",
@@ -96,7 +136,7 @@ const mockJobs = [
     status: "rated",
     amount: "$5.00",
     date: "2026-03-11",
-    txHash: "0x9i0j..1k2l",
+    txHash: "0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d",
   },
   {
     id: "job-004",
@@ -106,6 +146,7 @@ const mockJobs = [
     amount: "$1.00",
     date: "2026-03-13",
     txHash: null,
+    hcsTopicId: "0.0.5610001",
   },
   {
     id: "job-005",
@@ -122,54 +163,84 @@ const statusConfig: Record<
   string,
   { label: string; icon: React.ElementType; className: string }
 > = {
-  pending_fund: {
-    label: "Pending Fund",
-    icon: Clock,
-    className: "text-yellow-400 bg-yellow-400/10",
-  },
-  funded: {
-    label: "Funded",
-    icon: DollarSign,
-    className: "text-blue-400 bg-blue-400/10",
-  },
-  in_progress: {
-    label: "In Progress",
-    icon: Zap,
-    className: "text-purple-400 bg-purple-400/10",
-  },
-  delivered: {
-    label: "Delivered",
-    icon: CheckCircle,
-    className: "text-cyan-400 bg-cyan-400/10",
-  },
-  completed: {
-    label: "Completed",
-    icon: CheckCircle,
-    className: "text-emerald-400 bg-emerald-400/10",
-  },
-  rated: {
-    label: "Rated",
-    icon: Star,
-    className: "text-yellow-400 bg-yellow-400/10",
-  },
-  disputed: {
-    label: "Disputed",
-    icon: AlertCircle,
-    className: "text-red-400 bg-red-400/10",
-  },
+  pending_fund: { label: "Pending Fund", icon: Clock, className: "text-yellow-400 bg-yellow-400/10" },
+  funded: { label: "Funded", icon: DollarSign, className: "text-blue-400 bg-blue-400/10" },
+  in_progress: { label: "In Progress", icon: Zap, className: "text-purple-400 bg-purple-400/10" },
+  delivered: { label: "Delivered", icon: CheckCircle, className: "text-cyan-400 bg-cyan-400/10" },
+  completed: { label: "Completed", icon: CheckCircle, className: "text-emerald-400 bg-emerald-400/10" },
+  rated: { label: "Rated", icon: Star, className: "text-yellow-400 bg-yellow-400/10" },
+  disputed: { label: "Disputed", icon: AlertCircle, className: "text-red-400 bg-red-400/10" },
 };
 
 export default function DashboardPage() {
   const [tab, setTab] = useState("overview");
+  const { address, isConnected, connect, isConnecting } = useWalletStore();
+  const [agents, setAgents] = useState<AgentInfo[]>(defaultAgents);
+  const [jobs] = useState<JobInfo[]>(defaultJobs);
 
-  const totalRevenue = mockAgents.reduce((s, a) => s + a.revenue, 0);
-  const totalJobs = mockAgents.reduce((s, a) => s + a.jobsCompleted, 0);
+  useEffect(() => {
+    fetch("/api/agents")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.agents?.length) {
+          const mapped: AgentInfo[] = data.agents.map(
+            (a: { id: string; name: string; capability: string; status: string; pricingUsd: string }, i: number) => {
+              const meta = capabilityIcons[a.capability] || capabilityIcons["hedera-skills"];
+              return {
+                id: i + 1,
+                name: a.name,
+                capability: a.capability,
+                icon: meta.icon,
+                color: meta.color,
+                bgColor: meta.bgColor,
+                status: a.status || "active",
+                jobsCompleted: defaultAgents[i]?.jobsCompleted ?? 0,
+                revenue: defaultAgents[i]?.revenue ?? 0,
+                rating: defaultAgents[i]?.rating ?? 4.5,
+              };
+            }
+          );
+          setAgents(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const totalRevenue = agents.reduce((s, a) => s + a.revenue, 0);
+  const totalJobs = agents.reduce((s, a) => s + a.jobsCompleted, 0);
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen">
+        <NavHeader />
+        <main className="container mx-auto px-4 py-24 text-center max-w-lg">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <Wallet className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3">Connect Your Wallet</h1>
+          <p className="text-muted-foreground mb-8">
+            Connect your wallet to view your agents, track jobs, and monitor
+            earnings on the Hedera network.
+          </p>
+          <Button onClick={connect} disabled={isConnecting} size="lg">
+            {isConnecting ? (
+              <Clock className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LogIn className="mr-2 h-4 w-4" />
+            )}
+            Connect Wallet
+          </Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
       <NavHeader />
       <main className="container mx-auto px-4 py-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-1">Dashboard</h1>
             <p className="text-muted-foreground">
@@ -177,10 +248,19 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm">
-              <Wallet className="h-4 w-4 mr-2" />
-              0x051b...37f8
-            </Button>
+            {address && (
+              <a
+                href={getHashScanAddressUrl(address)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm">
+                  <Wallet className="h-4 w-4 mr-2" />
+                  {shortenAddress(address)}
+                  <ExternalLink className="h-3 w-3 ml-2" />
+                </Button>
+              </a>
+            )}
             <Button size="sm" asChild>
               <Link href="/agents/create">
                 <Bot className="h-4 w-4 mr-2" /> New Agent
@@ -189,7 +269,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -197,7 +276,7 @@ export default function DashboardPage() {
                 <Bot className="h-4 w-4" />
                 Active Agents
               </div>
-              <p className="text-3xl font-bold">{mockAgents.length}</p>
+              <p className="text-3xl font-bold">{agents.length}</p>
             </CardContent>
           </Card>
           <Card>
@@ -225,10 +304,9 @@ export default function DashboardPage() {
                 Avg Rating
               </div>
               <p className="text-3xl font-bold">
-                {(
-                  mockAgents.reduce((s, a) => s + a.rating, 0) /
-                  mockAgents.length
-                ).toFixed(1)}
+                {agents.length > 0
+                  ? (agents.reduce((s, a) => s + a.rating, 0) / agents.length).toFixed(1)
+                  : "—"}
               </p>
             </CardContent>
           </Card>
@@ -242,7 +320,7 @@ export default function DashboardPage() {
 
           <TabsContent value="overview">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockAgents.map((agent) => {
+              {agents.map((agent) => {
                 const Icon = agent.icon;
                 return (
                   <Card
@@ -269,32 +347,19 @@ export default function DashboardPage() {
                     <CardContent>
                       <div className="grid grid-cols-3 gap-3 text-center">
                         <div>
-                          <p className="text-lg font-bold">
-                            {agent.jobsCompleted}
-                          </p>
+                          <p className="text-lg font-bold">{agent.jobsCompleted}</p>
                           <p className="text-xs text-muted-foreground">Jobs</p>
                         </div>
                         <div>
-                          <p className="text-lg font-bold">
-                            ${agent.revenue.toFixed(0)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Revenue
-                          </p>
+                          <p className="text-lg font-bold">${agent.revenue.toFixed(0)}</p>
+                          <p className="text-xs text-muted-foreground">Revenue</p>
                         </div>
                         <div>
                           <p className="text-lg font-bold">{agent.rating}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Rating
-                          </p>
+                          <p className="text-xs text-muted-foreground">Rating</p>
                         </div>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-4"
-                        asChild
-                      >
+                      <Button variant="outline" size="sm" className="w-full mt-4" asChild>
                         <Link href={`/agents/${agent.capability}`}>
                           View Agent <ArrowRight className="ml-2 h-3 w-3" />
                         </Link>
@@ -310,7 +375,7 @@ export default function DashboardPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="space-y-0 divide-y">
-                  {mockJobs.map((job) => {
+                  {jobs.map((job) => {
                     const status = statusConfig[job.status] || statusConfig.completed;
                     const StatusIcon = status.icon;
                     return (
@@ -325,9 +390,7 @@ export default function DashboardPage() {
                             <StatusIcon className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {job.task}
-                            </p>
+                            <p className="text-sm font-medium truncate">{job.task}</p>
                             <p className="text-xs text-muted-foreground">
                               {job.agent} · {job.date}
                             </p>
@@ -345,10 +408,11 @@ export default function DashboardPage() {
                           </span>
                           {job.txHash ? (
                             <a
-                              href={`https://hashscan.io/testnet/transaction/${job.txHash}`}
+                              href={getHashScanTxUrl(job.txHash)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-muted-foreground hover:text-foreground"
+                              className="text-muted-foreground hover:text-primary transition-colors"
+                              title="View on HashScan"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>
@@ -372,35 +436,36 @@ export default function DashboardPage() {
               <Zap className="h-4 w-4 text-primary" />
               Hedera Transaction Summary
             </CardTitle>
+            <CardDescription>
+              All actions generate verifiable Hedera transactions.{" "}
+              <a
+                href="https://hashscan.io/testnet"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                View on HashScan
+              </a>
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid sm:grid-cols-4 gap-4 text-sm">
               <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-muted-foreground text-xs">
-                  Agent Registrations
-                </p>
-                <p className="text-lg font-bold">
-                  {mockAgents.length} NFT mints
-                </p>
+                <p className="text-muted-foreground text-xs">Agent Registrations</p>
+                <p className="text-lg font-bold">{agents.length} NFT mints</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-muted-foreground text-xs">
-                  Escrow Transactions
-                </p>
+                <p className="text-muted-foreground text-xs">Escrow Transactions</p>
                 <p className="text-lg font-bold">{totalJobs * 3} txns</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-muted-foreground text-xs">
-                  HCS Messages
-                </p>
+                <p className="text-muted-foreground text-xs">HCS Messages</p>
                 <p className="text-lg font-bold">{totalJobs * 4} logs</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
-                <p className="text-muted-foreground text-xs">
-                  Total On-Chain Actions
-                </p>
+                <p className="text-muted-foreground text-xs">Total On-Chain Actions</p>
                 <p className="text-lg font-bold text-primary">
-                  {mockAgents.length + totalJobs * 7}+
+                  {agents.length + totalJobs * 7}+
                 </p>
               </div>
             </div>

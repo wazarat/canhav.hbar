@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Zap, Menu, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Zap, Menu, X, Wallet, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import {
+  useWalletStore,
+  shortenAddress,
+  getHashScanAddressUrl,
+} from "@/lib/stores/wallet-store";
 
 const links = [
   { href: "/skills", label: "Skills" },
@@ -17,6 +23,8 @@ const links = [
 export function NavHeader() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { address, isConnected, isConnecting, connect, disconnect } =
+    useWalletStore();
 
   return (
     <header className="border-b border-border/40 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
@@ -48,7 +56,40 @@ export function NavHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button size="sm">Connect Wallet</Button>
+          {isConnected && address ? (
+            <div className="flex items-center gap-2">
+              <a
+                href={getHashScanAddressUrl(address)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover:bg-muted transition-colors hidden sm:flex"
+                >
+                  <Wallet className="h-3 w-3 mr-1.5" />
+                  {shortenAddress(address)}
+                </Badge>
+              </a>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={disconnect}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" onClick={connect} disabled={isConnecting}>
+              {isConnecting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Wallet className="h-4 w-4 mr-2" />
+              )}
+              {isConnecting ? "Connecting..." : "Connect Wallet"}
+            </Button>
+          )}
           <button
             className="md:hidden p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
