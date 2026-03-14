@@ -8,6 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { NavHeader } from "@/components/nav-header";
+import { Footer } from "@/components/footer";
 import {
   BookOpen,
   Bot,
@@ -21,48 +23,9 @@ import {
 export default function Home() {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border/40 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-xl">
-              CanHav<span className="text-primary">.HBAR</span>
-            </span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-6">
-            <Link
-              href="/skills"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Skills
-            </Link>
-            <Link
-              href="/marketplace"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Marketplace
-            </Link>
-            <Link
-              href="/market-map"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Market Map
-            </Link>
-            <Link
-              href="/dashboard"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Dashboard
-            </Link>
-          </nav>
-          <Button size="sm">Connect Wallet</Button>
-        </div>
-      </header>
+      <NavHeader />
 
       <main>
-        {/* Hero */}
         <section className="container mx-auto px-4 pt-24 pb-16 text-center">
           <Badge variant="secondary" className="mb-4">
             Hedera Hello Future Apex 2026
@@ -88,7 +51,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Feature Cards */}
         <section className="container mx-auto px-4 pb-24">
           <div className="grid md:grid-cols-3 gap-6">
             <Card className="group hover:border-primary/50 transition-colors">
@@ -155,7 +117,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Hedera Integration */}
         <section className="border-t border-border/40 bg-muted/30">
           <div className="container mx-auto px-4 py-16">
             <h2 className="text-2xl font-bold text-center mb-8">
@@ -209,7 +170,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Transaction Metrics */}
         <section className="container mx-auto px-4 py-16 text-center">
           <h2 className="text-2xl font-bold mb-8">
             Every Action = Hedera Transactions
@@ -237,13 +197,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-border/40 py-8">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>
-            CanHav.HBAR — Built for the Hedera Hello Future Apex Hackathon 2026
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
