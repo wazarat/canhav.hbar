@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
+import { PlatformMetrics } from "@/components/platform-metrics";
 import {
   BookOpen,
   Bot,
@@ -169,6 +170,8 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <PlatformMetrics />
 
         <section className="container mx-auto px-4 py-16 text-center">
           <h2 className="text-2xl font-bold mb-8">

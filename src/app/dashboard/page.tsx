@@ -36,6 +36,8 @@ import {
   shortenAddress,
   getHashScanAddressUrl,
   getHashScanTxUrl,
+  getHashScanTopicUrl,
+  getHashScanContractUrl,
 } from "@/lib/stores/wallet-store";
 
 type AgentInfo = {
@@ -459,19 +461,32 @@ export default function DashboardPage() {
                           <span className="text-sm font-medium w-16 text-right">
                             {job.amount}
                           </span>
-                          {job.txHash ? (
-                            <a
-                              href={getHashScanTxUrl(job.txHash)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-muted-foreground hover:text-primary transition-colors"
-                              title="View on HashScan"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          ) : (
-                            <div className="w-3.5" />
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {job.hcsTopicId && (
+                              <a
+                                href={getHashScanTopicUrl(job.hcsTopicId)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title={`HCS Topic: ${job.hcsTopicId}`}
+                              >
+                                <Zap className="h-3.5 w-3.5" />
+                              </a>
+                            )}
+                            {job.txHash ? (
+                              <a
+                                href={getHashScanTxUrl(job.txHash)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-muted-foreground hover:text-primary transition-colors"
+                                title="View transaction on HashScan"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            ) : (
+                              <div className="w-3.5" />
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -522,6 +537,27 @@ export default function DashboardPage() {
                   {agents.length + totalJobs * 7}+
                 </p>
               </div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t text-xs">
+              <span className="text-muted-foreground">Contracts:</span>
+              {process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS && (
+                <a href={getHashScanContractUrl(process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                  AgentRegistry <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {process.env.NEXT_PUBLIC_ESCROW_ADDRESS && (
+                <a href={getHashScanContractUrl(process.env.NEXT_PUBLIC_ESCROW_ADDRESS)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                  Escrow <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {process.env.NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS && (
+                <a href={getHashScanContractUrl(process.env.NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
+                  ReputationRegistry <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {!process.env.NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS && !process.env.NEXT_PUBLIC_ESCROW_ADDRESS && (
+                <span className="text-muted-foreground italic">Not deployed yet — run pnpm contracts:deploy:testnet</span>
+              )}
             </div>
           </CardContent>
         </Card>

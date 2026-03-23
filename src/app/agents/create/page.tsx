@@ -43,6 +43,7 @@ export default function CreateAgentPage() {
   const [result, setResult] = useState<{
     agentId: number;
     txHash: string;
+    holTopicId?: string | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,7 +81,7 @@ export default function CreateAgentPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Registration failed");
 
-      setResult({ agentId: data.agentId, txHash: data.txHash });
+      setResult({ agentId: data.agentId, txHash: data.txHash, holTopicId: data.holTopicId });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -239,6 +240,20 @@ export default function CreateAgentPage() {
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </p>
+                  {result.holTopicId && (
+                    <p className="flex items-center gap-1">
+                      <span className="text-muted-foreground">HOL Registry:</span>{" "}
+                      <a
+                        href={`https://hashscan.io/testnet/topic/${result.holTopicId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline flex items-center gap-1"
+                      >
+                        {result.holTopicId}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </p>
+                  )}
                 </div>
               </div>
             )}

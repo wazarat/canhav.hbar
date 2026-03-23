@@ -30,6 +30,8 @@ import {
 import {
   useWalletStore,
   shortenAddress,
+  getHashScanTxUrl,
+  getHashScanTopicUrl,
 } from "@/lib/stores/wallet-store";
 
 const agentMeta: Record<
@@ -153,6 +155,7 @@ export default function AgentDetailPage({
   const agent = agentMeta[params.capability];
   const [intake, setIntake] = useState<Record<string, string>>({});
   const [result, setResult] = useState<string | null>(null);
+  const [jobMeta, setJobMeta] = useState<{ jobId?: string; hcsTopicId?: string; amountUsd?: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState<number | null>(null);
@@ -179,6 +182,7 @@ export default function AgentDetailPage({
     setLoading(true);
     setError(null);
     setResult(null);
+    setJobMeta(null);
     const start = Date.now();
 
     try {
@@ -194,6 +198,7 @@ export default function AgentDetailPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Execution failed");
       setResult(data.result);
+      setJobMeta({ jobId: data.jobId, hcsTopicId: data.hcsTopicId, amountUsd: data.amountUsd });
       setElapsed(Date.now() - start);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -382,6 +387,31 @@ export default function AgentDetailPage({
                     <div className="p-4 rounded-lg border bg-muted/30 text-sm whitespace-pre-wrap leading-relaxed max-h-[600px] overflow-y-auto">
                       {result}
                     </div>
+                    {jobMeta && (
+                      <div className="flex flex-wrap items-center gap-3 pt-2 text-xs">
+                        {jobMeta.hcsTopicId && (
+                          <a
+                            href={getHashScanTopicUrl(jobMeta.hcsTopicId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <Zap className="h-3 w-3" /> HCS Topic {jobMeta.hcsTopicId}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                        {jobMeta.jobId && (
+                          <span className="text-muted-foreground">
+                            Job: {jobMeta.jobId.slice(0, 8)}...
+                          </span>
+                        )}
+                        {jobMeta.amountUsd && (
+                          <span className="text-muted-foreground">
+                            Cost: ${parseFloat(jobMeta.amountUsd).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>

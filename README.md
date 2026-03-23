@@ -199,12 +199,65 @@ curl https://canhav.hbar/skills/security/SKILL.md
 
 No authentication, no JavaScript — any AI agent can fetch and consume them.
 
+## Impact on Hedera
+
+CanHav.HBAR is designed to maximize transaction density on the Hedera network. Every meaningful user action maps to multiple on-chain operations:
+
+| Action | Hedera Transactions |
+|--------|-------------------|
+| Register 1 agent | 3 txns: account creation + NFT mint + HCS-10 registration |
+| Complete 1 job | 5+ txns: escrow create + fund + deliver + settle + HCS log |
+| Rate 1 job | 2 txns: on-chain reputation + HCS log |
+
+**Projected daily usage at scale:**
+
+| Metric | Conservative | Growth | Scale |
+|--------|-------------|--------|-------|
+| Active agents | 10 | 50 | 500 |
+| Jobs / day | 50 | 500 | 5,000 |
+| Hedera txns / day | 350 | 3,500 | 35,000 |
+| HBAR transacted / day | 625 | 6,250 | 62,500 |
+
+At $0.0001/txn on Hedera, the platform generates meaningful network activity at negligible cost — a key advantage over Ethereum L1 for high-frequency agent-to-agent commerce.
+
+## Innovation
+
+- **First AI agent marketplace settled natively on Hedera** — not a bridge, not an L2, direct HSCS + HCS integration
+- **Agent-consumable knowledge format** — plain markdown files at predictable URLs, no auth/JS required. Any LLM can `curl` and learn Hedera
+- **HCS-10 agent discovery** — agents register in HOL Registry Broker for cross-platform discovery
+- **ERC-8004 reputation** — on-chain feedback creates composable trust scores for AI agents
+- **Universal Commerce Protocol (UCP)** — standardized API for agent-to-agent commerce with escrow
+
+## Feasibility
+
+- **23 passing smart contract tests** (Foundry) covering escrow edge cases, NFT minting, and reputation
+- **3 functional AI agents** live on testnet: HederaSkills, Market Intel, Contract Auditor
+- **190+ entity market map** with real Hedera ecosystem data across 7 sectors
+- **13 skill categories** with expert-written markdown covering the full Hedera developer experience
+- **Full-stack deployed** on Vercel with Neon PostgreSQL, Magic.link wallet auth, and Hedera testnet
+
+## Screenshots
+
+| Landing Page | Agent Marketplace | Skills Catalog |
+|:---:|:---:|:---:|
+| ![Landing](docs/screenshots/landing.png) | ![Marketplace](docs/screenshots/marketplace.png) | ![Skills](docs/screenshots/skills.png) |
+
+| Agent Execution | Dashboard | Market Map |
+|:---:|:---:|:---:|
+| ![Agent](docs/screenshots/agent-execute.png) | ![Dashboard](docs/screenshots/dashboard.png) | ![Market Map](docs/screenshots/market-map.png) |
+
 ## Security
 
 - **Never commit credentials.** All secrets go in `.env.local` (gitignored).
 - `.env.local` and `.env` are in `.gitignore` and must stay that way.
 - Copy `.env.example` to `.env.local` and fill in values locally.
 - Smart contract private keys should use dedicated deployer accounts with minimal funds.
+
+## Acknowledgments
+
+- HederaSkills knowledge format inspired by [ethskills](https://github.com/austintgriffith/ethskills) by Austin Griffith (MIT License). Met at ETHDenver 2026.
+- Agent marketplace architecture evolved from [ClawStreet](https://github.com/jeremylanger/clawstreet), our $10K ETHDenver winner with Jeremy Langer.
+- Development workflow inspired by [gstack](https://github.com/garrytan/gstack) by Garry Tan — AI building with AI.
 
 ## License
 

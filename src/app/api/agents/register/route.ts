@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAgentRegistry, getSigner } from "@/lib/contracts";
+import { registerAgentHCS10 } from "@/lib/hcs10";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,10 +44,30 @@ export async function POST(req: NextRequest) {
       await walletTx.wait();
     }
 
+    let parsed: { name?: string; description?: string; capability?: string } = {};
+    try {
+      parsed = JSON.parse(agentURI);
+    } catch {
+      // agentURI may not be JSON
+    }
+
+    let holTopicId: string | null = null;
+    try {
+      const holResult = await registerAgentHCS10({
+        name: parsed.name || `Agent #${agentId}`,
+        description: parsed.description || agentURI,
+        capabilities: parsed.capability ? [parsed.capability] : ["general"],
+      });
+      holTopicId = holResult?.topicId ?? null;
+    } catch (e) {
+      console.warn("[register] HCS-10/HOL registration non-fatal:", e);
+    }
+
     return NextResponse.json({
       agentId,
       txHash: receipt.hash,
       agentURI,
+      holTopicId,
     });
   } catch (e) {
     return NextResponse.json(
