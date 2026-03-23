@@ -30,7 +30,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Resolve worker agent from DB (fallback gracefully if DB not configured)
-    let workerAgentId: string | null = null;
     let amountUsd: string | null = null;
     let hcsTopicId: string | null = null;
     let jobId: string | null = null;
@@ -43,7 +42,6 @@ export async function POST(req: NextRequest) {
           .where(eq(agents.capability, capability));
 
         if (worker) {
-          workerAgentId = worker.id;
           amountUsd = worker.pricingUsd;
 
           try {
