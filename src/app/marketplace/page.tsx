@@ -25,6 +25,15 @@ import {
   DollarSign,
   ArrowRight,
   Zap,
+  Coins,
+  TrendingUp,
+  Image,
+  MessageSquare,
+  Cpu,
+  FileText,
+  Scale,
+  Code,
+  GitBranch,
 } from "lucide-react";
 
 type AgentData = {
@@ -35,18 +44,23 @@ type AgentData = {
   pricingUsd: string;
   capability: string;
   status: string;
+  rating?: number;
+  reviewCount?: number;
 };
 
 const iconMap: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   "hedera-skills": { icon: BookOpen, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
   "market-intel": { icon: BarChart3, color: "text-blue-400", bgColor: "bg-blue-400/10" },
   "contract-auditor": { icon: Shield, color: "text-orange-400", bgColor: "bg-orange-400/10" },
-};
-
-const defaultStats: Record<string, { rating: number; jobsCompleted: number }> = {
-  "hedera-skills": { rating: 4.8, jobsCompleted: 142 },
-  "market-intel": { rating: 4.6, jobsCompleted: 87 },
-  "contract-auditor": { rating: 4.9, jobsCompleted: 53 },
+  "token-deployer": { icon: Coins, color: "text-yellow-400", bgColor: "bg-yellow-400/10" },
+  "defi-analyst": { icon: TrendingUp, color: "text-cyan-400", bgColor: "bg-cyan-400/10" },
+  "nft-minter": { icon: Image, color: "text-violet-400", bgColor: "bg-violet-400/10" },
+  "hcs-logger": { icon: MessageSquare, color: "text-pink-400", bgColor: "bg-pink-400/10" },
+  "gas-optimizer": { icon: Cpu, color: "text-red-400", bgColor: "bg-red-400/10" },
+  "ecosystem-reporter": { icon: FileText, color: "text-teal-400", bgColor: "bg-teal-400/10" },
+  "compliance-checker": { icon: Scale, color: "text-amber-400", bgColor: "bg-amber-400/10" },
+  "code-generator": { icon: Code, color: "text-lime-400", bgColor: "bg-lime-400/10" },
+  "bridge-advisor": { icon: GitBranch, color: "text-indigo-400", bgColor: "bg-indigo-400/10" },
 };
 
 export default function MarketplacePage() {
@@ -102,11 +116,14 @@ export default function MarketplacePage() {
             />
           </div>
           <Tabs value={filter} onValueChange={setFilter} className="w-auto">
-            <TabsList>
+            <TabsList className="flex-wrap h-auto gap-1">
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="hedera-skills">Skills</TabsTrigger>
               <TabsTrigger value="market-intel">Intel</TabsTrigger>
               <TabsTrigger value="contract-auditor">Auditor</TabsTrigger>
+              <TabsTrigger value="token-deployer">Deploy</TabsTrigger>
+              <TabsTrigger value="defi-analyst">DeFi</TabsTrigger>
+              <TabsTrigger value="code-generator">Code</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -129,10 +146,11 @@ export default function MarketplacePage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((agent) => {
-              const meta = iconMap[agent.capability] || iconMap["hedera-skills"];
-              const stats = defaultStats[agent.capability] || { rating: 4.5, jobsCompleted: 0 };
+              const meta = iconMap[agent.capability] || { icon: Bot, color: "text-muted-foreground", bgColor: "bg-muted" };
               const Icon = meta.icon;
               const price = parseFloat(agent.pricingUsd) || 1;
+              const rating = agent.rating ?? 0;
+              const reviews = agent.reviewCount ?? 0;
 
               return (
                 <Card
@@ -152,13 +170,13 @@ export default function MarketplacePage() {
                       </Badge>
                     </div>
                     <CardTitle className="text-lg mt-3">{agent.name}</CardTitle>
-                    <CardDescription className="text-sm">
+                    <CardDescription className="text-sm line-clamp-2">
                       {agent.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex flex-wrap gap-1.5 mb-4">
-                      {(agent.capabilities || []).map((cap) => (
+                      {(agent.capabilities || []).slice(0, 3).map((cap) => (
                         <Badge
                           key={cap}
                           variant="secondary"
@@ -171,10 +189,15 @@ export default function MarketplacePage() {
 
                     <div className="flex items-center justify-between text-sm mb-4">
                       <div className="flex items-center gap-1 text-muted-foreground">
-                        <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
-                        <span>{stats.rating}</span>
-                        <span className="mx-1">·</span>
-                        <span>{stats.jobsCompleted} jobs</span>
+                        {rating > 0 ? (
+                          <>
+                            <Star className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+                            <span>{rating.toFixed(1)}</span>
+                            <span className="text-xs">({reviews})</span>
+                          </>
+                        ) : (
+                          <span className="text-xs">No reviews</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1 font-medium">
                         <DollarSign className="h-3.5 w-3.5" />

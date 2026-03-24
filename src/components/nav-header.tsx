@@ -17,6 +17,7 @@ const links = [
   { href: "/skills", label: "Skills" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/market-map", label: "Market Map" },
+  { href: "/demo", label: "Demo" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 

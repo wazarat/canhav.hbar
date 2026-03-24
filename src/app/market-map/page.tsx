@@ -47,16 +47,13 @@ type Sector = {
 };
 
 const sectorColors: Record<string, string> = {
-  DeFi: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  Gaming: "bg-purple-500/10 text-purple-400 border-purple-500/30",
-  "Supply Chain": "bg-green-500/10 text-green-400 border-green-500/30",
-  Identity: "bg-orange-500/10 text-orange-400 border-orange-500/30",
-  Payments: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-  Infrastructure: "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
-  Enterprise: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  "Data & AI": "bg-pink-500/10 text-pink-400 border-pink-500/30",
-  NFT: "bg-violet-500/10 text-violet-400 border-violet-500/30",
-  Sustainability: "bg-lime-500/10 text-lime-400 border-lime-500/30",
+  "Core Protocol Architecture": "bg-cyan-500/10 text-cyan-400 border-cyan-500/30",
+  "Scaling & Network Extensions": "bg-purple-500/10 text-purple-400 border-purple-500/30",
+  "Monetary & Access Rails": "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  "DeFi Systems Architecture": "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  "Data & Infrastructure Services": "bg-orange-500/10 text-orange-400 border-orange-500/30",
+  "Advanced Compute & Integration": "bg-pink-500/10 text-pink-400 border-pink-500/30",
+  "Governance & Enterprise Ecosystem": "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
 };
 
 function getSectorColor(sector: string) {

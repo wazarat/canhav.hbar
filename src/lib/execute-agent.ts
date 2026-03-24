@@ -1,11 +1,21 @@
 import { runHederaSkillsAgent } from "@/agents/hedera-skills-agent";
 import { runMarketIntelAgent } from "@/agents/market-intel-agent";
 import { runContractAuditorAgent } from "@/agents/contract-auditor-agent";
+import { runGenericAgent } from "@/agents/generic-agent";
 
 export type AgentCapability =
   | "hedera-skills"
   | "market-intel"
-  | "contract-auditor";
+  | "contract-auditor"
+  | "token-deployer"
+  | "defi-analyst"
+  | "nft-minter"
+  | "hcs-logger"
+  | "gas-optimizer"
+  | "ecosystem-reporter"
+  | "compliance-checker"
+  | "code-generator"
+  | "bridge-advisor";
 
 export async function executeAgent(
   capability: AgentCapability,
@@ -30,6 +40,24 @@ export async function executeAgent(
           ? String(intake.contractName)
           : undefined,
       });
+    case "token-deployer":
+      return runGenericAgent("token-deployer", intake);
+    case "defi-analyst":
+      return runGenericAgent("defi-analyst", intake);
+    case "nft-minter":
+      return runGenericAgent("nft-minter", intake);
+    case "hcs-logger":
+      return runGenericAgent("hcs-logger", intake);
+    case "gas-optimizer":
+      return runGenericAgent("gas-optimizer", intake);
+    case "ecosystem-reporter":
+      return runGenericAgent("ecosystem-reporter", intake);
+    case "compliance-checker":
+      return runGenericAgent("compliance-checker", intake);
+    case "code-generator":
+      return runGenericAgent("code-generator", intake);
+    case "bridge-advisor":
+      return runGenericAgent("bridge-advisor", intake);
     default:
       throw new Error(`Unknown agent capability: ${capability}`);
   }
