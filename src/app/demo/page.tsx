@@ -15,8 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   BookOpen,
-  BarChart3,
-  Bot,
   ArrowRight,
   CheckCircle,
   Loader2,

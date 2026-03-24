@@ -30,7 +30,6 @@ import {
 import {
   useWalletStore,
   shortenAddress,
-  getHashScanTxUrl,
   getHashScanTopicUrl,
 } from "@/lib/stores/wallet-store";
 
