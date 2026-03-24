@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const entities = getAllEntities();
-    return NextResponse.json(entities);
+    return NextResponse.json({ entities });
   } catch (error) {
     console.error("[api/market-map]", error);
     return NextResponse.json(
