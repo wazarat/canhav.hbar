@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     .filter(Boolean)
     .join("\n\n---\n\n");
 
-  const toolkit = await buildAIStudioToolkit({
+  await buildAIStudioToolkit({
     topics,
     skillContext: skillContext || undefined,
   });

@@ -66,7 +66,7 @@ export default function AIStudioPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, reload, setMessages } =
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } =
     useChat({
       api: "/api/ai-studio",
       headers: {

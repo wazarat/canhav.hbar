@@ -86,7 +86,6 @@ export async function buildAIStudioToolkit(config: AIStudioConfig) {
     const agentKit = new HederaAgentKit(accountId, privateKey, "testnet");
 
     const pluginEntries = resolvePluginNames(config.topics);
-    const pluginNames = pluginEntries.map((p) => p.name);
 
     return {
       agentKit,
