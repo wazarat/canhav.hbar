@@ -245,5 +245,22 @@ function getDefaultAgents() {
         ],
       },
     },
+    {
+      id: "default-ai-studio",
+      name: "AI Studio Agent",
+      description:
+        "Interactive Hedera agent powered by Agent Kit v3. Explains AND executes on-chain actions on Hedera Testnet — mint tokens, submit HCS messages, query accounts, and more via streaming chat.",
+      capabilities: ["on-chain-execution", "streaming-chat", "plugin-scoping", "hts", "hcs", "evm"],
+      pricingUsd: "0.00",
+      capability: "ai-studio",
+      status: "active",
+      rating: 4.9,
+      reviewCount: 34,
+      intakeSchema: {
+        fields: [
+          { name: "query", type: "text", required: true, description: "What do you want to do on Hedera?", placeholder: "Create a fungible token on testnet" },
+        ],
+      },
+    },
   ];
 }

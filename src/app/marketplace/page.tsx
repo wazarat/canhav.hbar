@@ -34,6 +34,7 @@ import {
   Scale,
   Code,
   GitBranch,
+  Sparkles,
 } from "lucide-react";
 
 type AgentData = {
@@ -61,6 +62,7 @@ const iconMap: Record<string, { icon: React.ElementType; color: string; bgColor:
   "compliance-checker": { icon: Scale, color: "text-amber-400", bgColor: "bg-amber-400/10" },
   "code-generator": { icon: Code, color: "text-lime-400", bgColor: "bg-lime-400/10" },
   "bridge-advisor": { icon: GitBranch, color: "text-indigo-400", bgColor: "bg-indigo-400/10" },
+  "ai-studio": { icon: Sparkles, color: "text-purple-400", bgColor: "bg-purple-400/10" },
 };
 
 export default function MarketplacePage() {
@@ -124,6 +126,7 @@ export default function MarketplacePage() {
               <TabsTrigger value="token-deployer">Deploy</TabsTrigger>
               <TabsTrigger value="defi-analyst">DeFi</TabsTrigger>
               <TabsTrigger value="code-generator">Code</TabsTrigger>
+              <TabsTrigger value="ai-studio">AI Studio</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -206,8 +209,8 @@ export default function MarketplacePage() {
                     </div>
 
                     <Button className="w-full" size="sm" asChild>
-                      <Link href={`/agents/${agent.capability}`}>
-                        Hire Agent <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                      <Link href={agent.capability === "ai-studio" ? "/ai-studio" : `/agents/${agent.capability}`}>
+                        {agent.capability === "ai-studio" ? "Open Studio" : "Hire Agent"} <ArrowRight className="ml-2 h-3.5 w-3.5" />
                       </Link>
                     </Button>
                   </CardContent>

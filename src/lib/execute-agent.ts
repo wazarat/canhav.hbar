@@ -15,7 +15,8 @@ export type AgentCapability =
   | "ecosystem-reporter"
   | "compliance-checker"
   | "code-generator"
-  | "bridge-advisor";
+  | "bridge-advisor"
+  | "ai-studio";
 
 export async function executeAgent(
   capability: AgentCapability,
@@ -58,6 +59,8 @@ export async function executeAgent(
       return runGenericAgent("code-generator", intake);
     case "bridge-advisor":
       return runGenericAgent("bridge-advisor", intake);
+    case "ai-studio":
+      return "AI Studio uses a streaming interface. Visit /ai-studio to interact with the Hedera Agent Kit v3 in real time.";
     default:
       throw new Error(`Unknown agent capability: ${capability}`);
   }

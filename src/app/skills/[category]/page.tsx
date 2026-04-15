@@ -7,7 +7,7 @@ import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Sparkles } from "lucide-react";
 import { CopyUrlButton } from "@/components/copy-url-button";
 
 function getSkillContent(category: string): string | null {
@@ -251,7 +251,27 @@ export default function SkillCategoryPage({
 
         <div className="prose-sm">{renderMarkdown(content)}</div>
 
-        <div className="mt-12 pt-6 border-t flex items-center justify-between">
+        <div className="mt-10 p-5 rounded-lg border border-purple-500/30 bg-purple-500/5">
+          <div className="flex items-start gap-4">
+            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+              <Sparkles className="h-5 w-5 text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-1">Practice with AI Studio</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Try this skill hands-on — the AI Studio agent can explain concepts and execute real transactions on Hedera Testnet, scoped to this topic.
+              </p>
+              <Link href={`/ai-studio?topic=${params.category}`}>
+                <Button size="sm">
+                  <Sparkles className="h-3.5 w-3.5 mr-2" />
+                  Open in AI Studio
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 pt-6 border-t flex items-center justify-between">
           <CopyUrlButton url={rawUrl} />
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             Give this URL to your AI agent
