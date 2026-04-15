@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     .filter(Boolean)
     .join("\n\n---\n\n");
 
-  await buildAIStudioToolkit({
+  const toolkit = await buildAIStudioToolkit({
     topics,
     skillContext: skillContext || undefined,
   });
@@ -101,14 +101,21 @@ export async function POST(req: NextRequest) {
     ).catch(() => {});
   }
 
-  const result = streamText({
+  const streamOpts: Parameters<typeof streamText>[0] = {
     model: openai("gpt-4o"),
     system: systemPrompt,
     messages,
     maxSteps: 5,
     temperature: 0.3,
     maxTokens: 3000,
-  });
+  };
+
+  if (!toolkit.fallback && Object.keys(toolkit.tools).length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    streamOpts.tools = toolkit.tools as any;
+  }
+
+  const result = streamText(streamOpts);
 
   return result.toDataStreamResponse();
 }

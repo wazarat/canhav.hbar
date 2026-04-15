@@ -1,3 +1,5 @@
+import { getHederaClient } from "@/lib/hedera";
+
 const ALLOWED_TOPICS = new Set([
   "hts",
   "hcs",
@@ -9,62 +11,78 @@ const ALLOWED_TOPICS = new Set([
 
 export { ALLOWED_TOPICS };
 
-type PluginEntry = {
-  name: string;
-  description: string;
+const TOPIC_PLUGIN_MAP: Record<string, string[]> = {
+  hts: ["coreHTSPlugin", "coreTokenQueryPlugin"],
+  hcs: ["coreConsensusPlugin", "coreConsensusQueryPlugin"],
+  account: ["coreAccountPlugin", "coreAccountQueryPlugin"],
+  evm: ["coreEVMPlugin", "coreEVMQueryPlugin"],
+  defi: ["coreHTSPlugin", "coreTokenQueryPlugin", "coreAccountQueryPlugin"],
+  transactions: ["coreTransactionQueryPlugin"],
 };
 
-const TOPIC_PLUGIN_MAP: Record<string, PluginEntry[]> = {
-  hts: [
-    { name: "coreHTSPlugin", description: "Hedera Token Service operations" },
-    { name: "coreTokenQueryPlugin", description: "HTS token queries via Mirror Node" },
-  ],
-  hcs: [
-    { name: "coreConsensusPlugin", description: "Hedera Consensus Service operations" },
-    { name: "coreConsensusQueryPlugin", description: "HCS topic queries" },
-  ],
-  account: [
-    { name: "coreAccountPlugin", description: "Hedera Account Service operations" },
-    { name: "coreAccountQueryPlugin", description: "Account balance and info queries" },
-  ],
-  evm: [
-    { name: "coreEVMPlugin", description: "EVM smart contract interactions (ERC-20, ERC-721)" },
-    { name: "coreEVMQueryPlugin", description: "Smart contract query operations" },
-  ],
-  defi: [
-    { name: "coreHTSPlugin", description: "Hedera Token Service operations" },
-    { name: "coreTokenQueryPlugin", description: "HTS token queries via Mirror Node" },
-    { name: "coreAccountQueryPlugin", description: "Account balance and info queries" },
-  ],
-  transactions: [
-    { name: "coreTransactionsPlugin", description: "General Hedera transaction operations" },
-  ],
-};
-
-const QUERY_ONLY_FALLBACK: PluginEntry[] = [
-  { name: "coreTokenQueryPlugin", description: "HTS token queries via Mirror Node" },
-  { name: "coreAccountQueryPlugin", description: "Account balance and info queries" },
-  { name: "coreConsensusQueryPlugin", description: "HCS topic queries" },
+const QUERY_ONLY_FALLBACK = [
+  "coreTokenQueryPlugin",
+  "coreAccountQueryPlugin",
+  "coreConsensusQueryPlugin",
 ];
 
-function resolvePluginNames(topics: string[]): PluginEntry[] {
+const PLUGIN_DESCRIPTIONS: Record<string, string> = {
+  coreHTSPlugin: "Hedera Token Service operations",
+  coreTokenPlugin: "Token create, mint, transfer, burn",
+  coreTokenQueryPlugin: "HTS token queries via Mirror Node",
+  coreConsensusPlugin: "Hedera Consensus Service operations",
+  coreConsensusQueryPlugin: "HCS topic queries",
+  coreAccountPlugin: "Hedera Account Service operations",
+  coreAccountQueryPlugin: "Account balance and info queries",
+  coreEVMPlugin: "EVM smart contract interactions (ERC-20, ERC-721)",
+  coreEVMQueryPlugin: "Smart contract query operations",
+  coreSCSPlugin: "Smart Contract Service operations",
+  coreTransactionQueryPlugin: "Transaction query operations",
+  coreQueriesPlugin: "General Hedera query operations",
+};
+
+function resolvePluginNames(topics: string[]): string[] {
   const validated = topics.filter((t) => ALLOWED_TOPICS.has(t));
   if (validated.length === 0) return QUERY_ONLY_FALLBACK;
 
   const seen = new Set<string>();
-  const result: PluginEntry[] = [];
+  const result: string[] = [];
 
   for (const topic of validated) {
     const plugins = TOPIC_PLUGIN_MAP[topic] ?? QUERY_ONLY_FALLBACK;
     for (const p of plugins) {
-      if (!seen.has(p.name)) {
-        seen.add(p.name);
+      if (!seen.has(p)) {
+        seen.add(p);
         result.push(p);
       }
     }
   }
 
   return result;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolvePlugins(topics: string[]): Promise<any[]> {
+  const names = resolvePluginNames(topics);
+  const kit = await import("hedera-agent-kit");
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pluginMap: Record<string, any> = {
+    coreHTSPlugin: kit.coreHTSPlugin,
+    coreTokenPlugin: kit.coreTokenPlugin,
+    coreTokenQueryPlugin: kit.coreTokenQueryPlugin,
+    coreConsensusPlugin: kit.coreConsensusPlugin,
+    coreConsensusQueryPlugin: kit.coreConsensusQueryPlugin,
+    coreAccountPlugin: kit.coreAccountPlugin,
+    coreAccountQueryPlugin: kit.coreAccountQueryPlugin,
+    coreEVMPlugin: kit.coreEVMPlugin,
+    coreEVMQueryPlugin: kit.coreEVMQueryPlugin,
+    coreSCSPlugin: kit.coreSCSPlugin,
+    coreTransactionQueryPlugin: kit.coreTransactionQueryPlugin,
+    coreQueriesPlugin: kit.coreQueriesPlugin,
+  };
+
+  return names.map((n) => pluginMap[n]).filter(Boolean);
 }
 
 export interface AIStudioConfig {
@@ -74,28 +92,27 @@ export interface AIStudioConfig {
 
 export async function buildAIStudioToolkit(config: AIStudioConfig) {
   try {
-    const { HederaAgentKit } = await import("hedera-agent-kit");
+    const { HederaAIToolkit, AgentMode } = await import("hedera-agent-kit");
+    const client = getHederaClient();
+    const plugins = await resolvePlugins(config.topics);
 
-    const accountId = process.env.HEDERA_ACCOUNT_ID;
-    const privateKey = process.env.HEDERA_PRIVATE_KEY;
-
-    if (!accountId || !privateKey) {
-      return { tools: {}, pluginNames: resolvePluginNames(config.topics), fallback: true };
-    }
-
-    const agentKit = new HederaAgentKit(accountId, privateKey, "testnet");
-
-    const pluginEntries = resolvePluginNames(config.topics);
+    const toolkit = new HederaAIToolkit({
+      client,
+      configuration: {
+        tools: [],
+        plugins,
+        context: { mode: AgentMode.AUTONOMOUS },
+      },
+    });
 
     return {
-      agentKit,
-      pluginNames: pluginEntries,
-      tools: {},
+      tools: toolkit.getTools(),
+      pluginNames: resolvePluginNames(config.topics),
       fallback: false,
     };
   } catch {
     return {
-      tools: {},
+      tools: {} as Record<string, never>,
       pluginNames: resolvePluginNames(config.topics),
       fallback: true,
     };
@@ -103,8 +120,10 @@ export async function buildAIStudioToolkit(config: AIStudioConfig) {
 }
 
 export function getActivePluginDescriptions(topics: string[]): string {
-  const plugins = resolvePluginNames(topics);
-  return plugins.map((p) => `- ${p.name}: ${p.description}`).join("\n");
+  const names = resolvePluginNames(topics);
+  return names
+    .map((n) => `- ${n}: ${PLUGIN_DESCRIPTIONS[n] ?? "Hedera plugin"}`)
+    .join("\n");
 }
 
 export function buildSystemPrompt(topics: string[], skillContext?: string): string {

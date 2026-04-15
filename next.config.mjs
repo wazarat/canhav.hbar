@@ -13,7 +13,7 @@ const nextConfig = {
     return config;
   },
   experimental: {
-    serverComponentsExternalPackages: ["@hashgraph/sdk"],
+    serverComponentsExternalPackages: ["@hashgraph/sdk", "hedera-agent-kit"],
   },
 };
 
