@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { streamText } from "ai";
+import { streamText, type CoreMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import {
   buildAIStudioToolkit,
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const { messages, topics: rawTopics } = body as {
-    messages: Array<{ role: string; content: string }>;
+    messages: CoreMessage[];
     topics?: string[];
   };
 
