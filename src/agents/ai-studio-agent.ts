@@ -96,8 +96,10 @@ export async function buildAIStudioToolkit(config: AIStudioConfig) {
     const client = getHederaClient();
     const plugins = await resolvePlugins(config.topics);
 
+    // Cast needed: our @hashgraph/sdk@2.81 Client vs agent-kit's @hashgraph/sdk@2.80
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const toolkit = new HederaAIToolkit({
-      client,
+      client: client as any,
       configuration: {
         tools: [],
         plugins,
