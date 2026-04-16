@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useChat, type Message } from "ai/react";
 import { NavHeader } from "@/components/nav-header";
@@ -53,7 +53,7 @@ function getSessionId(): string {
   return id;
 }
 
-export default function AIStudioPage() {
+function AIStudioContent() {
   const searchParams = useSearchParams();
   const topicParam = searchParams.get("topic");
 
@@ -428,5 +428,13 @@ export default function AIStudioPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function AIStudioPage() {
+  return (
+    <Suspense>
+      <AIStudioContent />
+    </Suspense>
   );
 }
