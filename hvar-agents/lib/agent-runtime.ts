@@ -11,14 +11,29 @@ import {
   ContextualApprovalPolicy,
   createAuditTrailHook,
 } from "./policies";
-import { hvarStubPlugin } from "./x402/pay";
 import type {
   BudgetConfig,
   ApprovalConfig,
   CounterpartyConfig,
 } from "./policy-state";
+import {
+  getPluginsForAgent,
+  buildSystemPrompt,
+  buildStubSystemPrompt,
+  buildYieldScoutSystemPrompt,
+  type HvarAgentId,
+} from "./agent-config";
+import { bindSessionCounterparty } from "./runtime-session";
 
 export { AGENT_CATALOG } from "./agent-catalog";
+export {
+  getPluginsForAgent,
+  getAgentConfig,
+  buildSystemPrompt,
+  buildStubSystemPrompt,
+  buildYieldScoutSystemPrompt,
+  type HvarAgentId,
+} from "./agent-config";
 
 export interface HvarRuntimeConfig {
   sessionId: string;
@@ -26,6 +41,7 @@ export interface HvarRuntimeConfig {
   approval: ApprovalConfig;
   counterparty: CounterpartyConfig;
   taskType?: string;
+  agentId?: HvarAgentId;
   extraPlugins?: Plugin[];
 }
 
@@ -50,16 +66,17 @@ export function buildHvarRuntime(config: HvarRuntimeConfig): BuiltRuntime {
     config.taskType ?? "read"
   );
 
-  const context: Context = {
+  const context: Context & { sessionId?: string } = {
     mode: AgentMode.AUTONOMOUS,
     accountId: process.env.HEDERA_OPERATOR_ID,
+    sessionId: config.sessionId,
     hooks: [spendPolicy, counterpartyPolicy, approvalPolicy, ...hooks],
   };
 
-  const plugins: Plugin[] = [
-    hvarStubPlugin,
-    ...(config.extraPlugins ?? []),
-  ];
+  bindSessionCounterparty(config.sessionId, config.counterparty);
+
+  const agentId = config.agentId ?? "stub";
+  const plugins: Plugin[] = getPluginsForAgent(agentId, config.extraPlugins);
 
   const client = getHvarClient();
   const toolkit = new HederaAIToolkit({
@@ -80,16 +97,4 @@ export function defaultStubCounterpartyConfig(): CounterpartyConfig {
     allowlist: [worker, operator],
     minReputation: 0,
   };
-}
-
-export function buildStubSystemPrompt(budget: BudgetConfig): string {
-  return `You are the HVAR Skills stub agent on Hedera testnet.
-
-Your job: when the user asks to run the stub task, call the hvar_stub_pay tool to pay exactly 1 HBAR for the task.
-
-Policy constraints (enforced automatically):
-- Per-task cap: ${budget.perTaskCapHbar} HBAR
-- Daily budget: ${budget.dailyBudgetHbar} HBAR
-
-Never use mainnet. Explain policy blocks clearly if a payment fails.`;
 }

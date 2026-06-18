@@ -88,3 +88,12 @@ export function hbarToTinybar(hbar: number): number {
 export function getStubWorkerId(): string {
   return process.env.HVAR_STUB_WORKER_ID || process.env.HEDERA_OPERATOR_ID || "0.0.0";
 }
+
+export function getYieldScoutWorkerId(): string {
+  return (
+    process.env.HVAR_YIELD_SCOUT_WORKER_ID ||
+    process.env.HVAR_STUB_WORKER_ID ||
+    process.env.HEDERA_OPERATOR_ID ||
+    "0.0.0"
+  );
+}
