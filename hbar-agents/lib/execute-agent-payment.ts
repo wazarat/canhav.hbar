@@ -21,6 +21,11 @@ import {
   SWAP_EXECUTOR_TASK_PRICE_HBAR,
   getSwapExecutorCounterpartyConfig,
 } from "@hbar/agents/swap-executor/config";
+import {
+  lpHealthAgentConfig,
+  LP_HEALTH_TASK_PRICE_HBAR,
+  getLpHealthCounterpartyConfig,
+} from "@hbar/agents/lp-health/config";
 import type { HbarAgentId } from "./agent-config";
 import { getAgentConfig } from "./agent-config";
 import { buildStubTaskResult, buildYieldScoutTaskResult } from "./x402/facilitator";
@@ -60,6 +65,14 @@ function resolveAgent(agentId?: HbarAgentId) {
       config: swapExecutorAgentConfig,
       counterparty: getSwapExecutorCounterpartyConfig(),
       defaultPrice: SWAP_EXECUTOR_TASK_PRICE_HBAR,
+    };
+  }
+  if (id === "lp-health") {
+    return {
+      agentId: id as HbarAgentId,
+      config: lpHealthAgentConfig,
+      counterparty: getLpHealthCounterpartyConfig(),
+      defaultPrice: LP_HEALTH_TASK_PRICE_HBAR,
     };
   }
   return {
@@ -127,7 +140,9 @@ export async function executeAgentPayment(req: PayRequest): Promise<PayResponse>
           ? "yield-scout task purchase"
           : agentId === "swap-executor"
             ? "swap-executor task purchase"
-            : "stub task",
+            : agentId === "lp-health"
+              ? "lp-health task purchase"
+              : "stub task",
     });
 
     spendPolicy.recordSuccessfulSpend(

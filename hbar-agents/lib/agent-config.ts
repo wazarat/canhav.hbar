@@ -6,9 +6,14 @@ import { saucerswapExecutorPlugin } from "./plugins/saucerswap";
 import { stubAgentConfig } from "../agents/stub/config";
 import { yieldScoutAgentConfig } from "../agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "../agents/swap-executor/config";
+import { lpHealthAgentConfig } from "../agents/lp-health/config";
 import type { BudgetConfig } from "./policy-state";
 
-export type HbarAgentId = "stub" | "yield-scout" | "swap-executor";
+export type HbarAgentId =
+  | "stub"
+  | "yield-scout"
+  | "swap-executor"
+  | "lp-health";
 
 export interface AgentConfigBundle {
   id: HbarAgentId;
@@ -21,6 +26,7 @@ const TASK_PRICES: Record<HbarAgentId, number> = {
   stub: 1,
   "yield-scout": 1,
   "swap-executor": 1,
+  "lp-health": 1,
 };
 
 export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
@@ -29,7 +35,9 @@ export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
       ? yieldScoutAgentConfig
       : agentId === "swap-executor"
         ? swapExecutorAgentConfig
-        : stubAgentConfig;
+        : agentId === "lp-health"
+          ? lpHealthAgentConfig
+          : stubAgentConfig;
   return {
     id: agentId,
     name: config.name,
@@ -47,7 +55,9 @@ export function getPluginsForAgent(
       ? [hbarStubPlugin, bonzoReadonlyPlugin, pythPlugin]
       : agentId === "swap-executor"
         ? [hbarStubPlugin, saucerswapExecutorPlugin]
-        : [hbarStubPlugin];
+        : agentId === "lp-health"
+          ? [hbarStubPlugin, bonzoReadonlyPlugin]
+          : [hbarStubPlugin];
 
   return [...base, ...(extra ?? [])];
 }
@@ -61,6 +71,9 @@ export function buildSystemPrompt(
   }
   if (agentId === "swap-executor") {
     return buildSwapExecutorSystemPrompt(budget);
+  }
+  if (agentId === "lp-health") {
+    return buildLpHealthSystemPrompt(budget);
   }
   return buildStubSystemPrompt(budget);
 }
@@ -146,4 +159,73 @@ Policy constraints (enforced automatically):
 - SlippagePolicy blocks swaps that exceed maxSlippagePct
 
 Never use mainnet. Reject stale quotes. Never swap without a fresh quote.`;
+}
+
+export function buildLpHealthSystemPrompt(budget: BudgetConfig): string {
+  return `You are LP Health Check, an HBAR Skills read-only DeFi agent on Hedera testnet.
+
+Your job when the user provides position intake:
+1. Parse intake positions: { protocol: "Bonzo"|"SaucerSwap", asset, suppliedUsd?, borrowedUsd?, lpPair? }, alertThreshold (default 1.2)
+2. Call bonzo_market_data_tool to fetch live Bonzo reserve data (liquidation_threshold, ltv, utilization)
+3. For each position compute health factor using this heuristic:
+   - Bonzo lending: healthFactor = (suppliedUsd * (liquidation_threshold/100)) / borrowedUsd when borrowedUsd > 0; null if no borrow
+   - Utilization: from market data when available
+   - SaucerSwap LP: ilExposure = qualitative "low"|"medium"|"high" based on pair volatility; flag "estimate" in note if pool reserves unavailable
+4. Flag positions where healthFactor < alertThreshold (or healthFactor is null and protocol is Bonzo with borrow)
+5. Call hbar_stub_pay with amountHbar=1 to purchase the task (policy-gated)
+6. Return ONLY valid JSON matching this schema (no markdown, no prose outside JSON):
+{
+  "summary": "one-line risk summary",
+  "positions": [
+    {
+      "asset": "HBAR",
+      "protocol": "Bonzo",
+      "healthFactor": 1.5,
+      "utilization": 45,
+      "ilExposure": "n/a",
+      "flagged": false,
+      "note": "optional"
+    }
+  ],
+  "alertThreshold": 1.2,
+  "completedAt": "<ISO8601>"
+}
+
+Policy constraints (enforced on payment only):
+- Per-task cap: ${budget.perTaskCapHbar} HBAR
+- Daily budget: ${budget.dailyBudgetHbar} HBAR
+
+Never execute swaps, deposits, borrows, or withdrawals. Read-only position analysis only.`;
+}
+
+export function buildPriceFeedVerifierSystemPrompt(budget: BudgetConfig): string {
+  return `You are Price-Feed Verifier, an HBAR Skills read-only DeFi agent on Hedera testnet.
+
+Your job when the user provides a token pair to verify:
+1. Parse intake: { baseToken, quoteToken, referenceAmount (default 1), divergenceBps threshold (default 50) }
+2. Call saucerswap_get_swap_quote with fromToken=baseToken, toToken=quoteToken, amount=referenceAmount as string (READ ONLY — derive pool-implied price)
+3. Call pyth_get_latest_prices for baseToken (and quoteToken if needed)
+4. Compute divergenceBps = abs(poolImpliedPrice - pythPrice) / pythPrice * 10000
+5. Verdict: "aligned" if divergenceBps <= threshold, "minor_divergence" if <= 3*threshold, else "stale_or_manipulated"
+6. Call hbar_stub_pay with amountHbar=1 to purchase the task (policy-gated)
+7. Return ONLY valid JSON matching this schema (no markdown, no prose outside JSON):
+{
+  "summary": "one-line verdict summary",
+  "baseToken": "HBAR",
+  "quoteToken": "USDC",
+  "poolImpliedPrice": "0.05",
+  "pythPrice": "0.051",
+  "divergenceBps": 196,
+  "verdict": "minor_divergence",
+  "pythPublishTime": "<ISO8601 or null>",
+  "completedAt": "<ISO8601>"
+}
+
+NEVER call saucerswap_swap_tokens. Read-only oracle integrity check.
+
+Policy constraints (enforced on payment only):
+- Per-task cap: ${budget.perTaskCapHbar} HBAR
+- Daily budget: ${budget.dailyBudgetHbar} HBAR
+
+Never use mainnet. Never execute swaps.`;
 }

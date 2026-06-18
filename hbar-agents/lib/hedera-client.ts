@@ -106,3 +106,21 @@ export function getSwapExecutorWorkerId(): string {
     "0.0.0"
   );
 }
+
+export function getLpHealthWorkerId(): string {
+  return (
+    process.env.HBAR_LP_HEALTH_WORKER_ID ||
+    process.env.HBAR_STUB_WORKER_ID ||
+    process.env.HEDERA_OPERATOR_ID ||
+    "0.0.0"
+  );
+}
+
+export function getPriceFeedVerifierWorkerId(): string {
+  return (
+    process.env.HBAR_PRICE_FEED_VERIFIER_WORKER_ID ||
+    process.env.HBAR_STUB_WORKER_ID ||
+    process.env.HEDERA_OPERATOR_ID ||
+    "0.0.0"
+  );
+}
