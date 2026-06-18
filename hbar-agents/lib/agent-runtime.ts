@@ -25,6 +25,7 @@ import {
   type HbarAgentId,
 } from "./agent-config";
 import { bindSessionCounterparty } from "./runtime-session";
+import { applySaucerSwapContextConfig } from "./plugins/saucerswap";
 
 export { AGENT_CATALOG } from "./agent-catalog";
 export {
@@ -75,9 +76,13 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
     hooks: [spendPolicy, counterpartyPolicy, approvalPolicy, ...hooks],
   };
 
+  const agentId = config.agentId ?? "stub";
+  if (agentId === "swap-executor") {
+    applySaucerSwapContextConfig(context);
+  }
+
   bindSessionCounterparty(config.sessionId, config.counterparty);
 
-  const agentId = config.agentId ?? "stub";
   const plugins: Plugin[] = getPluginsForAgent(agentId, config.extraPlugins);
 
   const client = getHbarClient();

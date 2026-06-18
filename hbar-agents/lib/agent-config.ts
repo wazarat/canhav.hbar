@@ -2,6 +2,7 @@ import type { Plugin } from "@hashgraph/hedera-agent-kit";
 import { pythPlugin } from "hak-pyth-plugin";
 import { hbarStubPlugin } from "./x402/pay";
 import { bonzoReadonlyPlugin } from "./plugins/bonzo-readonly";
+import { saucerswapExecutorPlugin } from "./plugins/saucerswap";
 import { stubAgentConfig } from "../agents/stub/config";
 import { yieldScoutAgentConfig } from "../agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "../agents/swap-executor/config";
@@ -44,7 +45,9 @@ export function getPluginsForAgent(
   const base: Plugin[] =
     agentId === "yield-scout"
       ? [hbarStubPlugin, bonzoReadonlyPlugin, pythPlugin]
-      : [hbarStubPlugin];
+      : agentId === "swap-executor"
+        ? [hbarStubPlugin, saucerswapExecutorPlugin]
+        : [hbarStubPlugin];
 
   return [...base, ...(extra ?? [])];
 }
