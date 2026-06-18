@@ -85,7 +85,7 @@ const DATA_SOURCES: { id: DataSourceId; label: string; description: string }[] =
   },
 ];
 
-export function AgentStudioPage() {
+function AgentStudioPage() {
   const searchParams = useSearchParams();
   const loadAgentId = searchParams.get("agent");
 

@@ -10,6 +10,7 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
+import type { PolicySessionSnapshot } from "@hbar/lib/policy-state";
 
 export const jobStatusEnum = pgEnum("job_status", [
   "pending_fund",
@@ -84,6 +85,12 @@ export type Agent = typeof agents.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type NewAgent = typeof agents.$inferInsert;
 export type NewJob = typeof jobs.$inferInsert;
+
+export const policySessionState = pgTable("policy_session_state", {
+  sessionId: text("session_id").primaryKey(),
+  state: jsonb("state").$type<PolicySessionSnapshot>().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const customAgents = pgTable(
   "custom_agents",

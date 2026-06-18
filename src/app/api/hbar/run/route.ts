@@ -20,6 +20,9 @@ import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
 import type { LpHealthIntake } from "@hbar/agents/lp-health/types";
 import type { PriceVerifierIntake } from "@hbar/agents/price-feed-verifier/types";
 import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
+import { withPolicySession } from "@hbar/lib/policy-session-sync";
+
+export const maxDuration = 60;
 
 function hashScanTopicUrl() {
   const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
@@ -30,10 +33,15 @@ function hashScanTopicUrl() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  const sessionId =
+    (body.sessionId as string | undefined) ??
+    req.headers.get("x-session-id") ??
+    "anonymous";
+
+  return withPolicySession(sessionId, async () => {
   const {
     messages,
     goal,
-    sessionId = req.headers.get("x-session-id") ?? "anonymous",
     budget,
     approval,
     amountHbar,
@@ -51,7 +59,6 @@ export async function POST(req: NextRequest) {
   } = body as {
     messages?: CoreMessage[];
     goal?: string;
-    sessionId?: string;
     budget?: BudgetConfig;
     approval?: ApprovalConfig;
     amountHbar?: number;
@@ -262,4 +269,5 @@ export async function POST(req: NextRequest) {
 
   const result = streamText(streamOpts);
   return result.toDataStreamResponse();
+  });
 }

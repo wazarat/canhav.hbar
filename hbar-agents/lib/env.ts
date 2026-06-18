@@ -56,9 +56,7 @@ export function validateHbarEnv(options?: {
 
   const policyStore: EnvCheckStatus = isSet("DATABASE_URL")
     ? "configured"
-    : process.env.NODE_ENV === "production"
-      ? "fallback"
-      : "fallback";
+    : "fallback";
 
   if (process.env.NODE_ENV === "production" && !isSet("DATABASE_URL")) {
     warnings.push(

@@ -18,6 +18,9 @@ import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
 import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
+import { withPolicySession } from "@hbar/lib/policy-session-sync";
+
+export const maxDuration = 60;
 
 function resolveDefaults(agentId: HbarAgentId) {
   if (agentId === "yield-scout") return yieldScoutAgentConfig;
@@ -64,6 +67,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  return withPolicySession(sessionId, async () => {
   const pending = getPendingApproval(approvalId);
   if (!pending) {
     return NextResponse.json({ error: "Approval not found" }, { status: 404 });
@@ -232,4 +236,5 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ...payResult, hashScanTopicUrl });
+  });
 }

@@ -6,8 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "noEmit": false,
-    "module": "commonjs",
-    "moduleResolution": "node"
+    "module": "ES2020",
+    "moduleResolution": "bundler"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]

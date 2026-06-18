@@ -11,24 +11,28 @@ import {
 } from "@hbar/agents/swap-executor/config";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
+import { withPolicySession } from "@hbar/lib/policy-session-sync";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const sessionId =
+      (body.sessionId as string | undefined) ??
+      req.headers.get("x-session-id") ??
+      "anonymous";
     const {
-      sessionId = req.headers.get("x-session-id") ?? "anonymous",
       budget,
       approval,
       amountHbar,
       agentId = "stub",
     } = body as {
-      sessionId?: string;
       budget?: BudgetConfig;
       approval?: ApprovalConfig;
       amountHbar?: number;
       agentId?: HbarAgentId;
     };
 
+    return withPolicySession(sessionId, async () => {
     const isYieldScout = agentId === "yield-scout";
     const isSwapExecutor = agentId === "swap-executor";
     const defaults = isYieldScout
@@ -56,6 +60,7 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     return NextResponse.json({ ...response, hashScanTopicUrl });
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Payment failed";
     return NextResponse.json({ error: message }, { status: 500 });

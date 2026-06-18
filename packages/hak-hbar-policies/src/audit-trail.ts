@@ -1,4 +1,4 @@
-import { HcsAuditTrailHook } from "@hashgraph/hedera-agent-kit/dist/cjs/hooks";
+import { HcsAuditTrailHook } from "@hashgraph/hedera-agent-kit/hooks";
 import type { Client } from "@hiero-ledger/sdk";
 import { POLICY_GUARDED_TOOLS } from "./tools";
 
