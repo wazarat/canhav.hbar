@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { hbarSkillsUi, POLICY_BADGE } from "@hbar/lib/ui-tokens";
-import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type {
   CustomAgentSpec,
   DataSourceId,
@@ -172,9 +171,13 @@ export function AgentStudioPage() {
     ]
   );
 
-  const swapIntake: SwapExecutorIntake | undefined = writeEnabled
-    ? { tokenIn, tokenOut, amountIn, maxSlippagePct }
-    : undefined;
+  const swapIntake = useMemo<SwapExecutorIntake | undefined>(
+    () =>
+      writeEnabled
+        ? { tokenIn, tokenOut, amountIn, maxSlippagePct }
+        : undefined,
+    [writeEnabled, tokenIn, tokenOut, amountIn, maxSlippagePct]
+  );
 
   const policySummary = useMemo(() => {
     const lines = [
