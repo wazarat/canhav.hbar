@@ -6,9 +6,12 @@ import { stubAgentConfig, getStubCounterpartyConfig } from "@hbar/agents/stub/co
 import {
   yieldScoutAgentConfig,
 } from "@hbar/agents/yield-scout/config";
+import { swapExecutorAgentConfig } from "@hbar/agents/swap-executor/config";
 import { executeYieldScoutRun } from "@hbar/lib/execute-yield-scout-run";
+import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
+import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -23,6 +26,9 @@ export async function POST(req: NextRequest) {
     stream = true,
     skipPayment,
     paymentTxId,
+    intake,
+    quoteOnly,
+    swapApproved,
   } = body as {
     messages?: CoreMessage[];
     goal?: string;
@@ -34,6 +40,9 @@ export async function POST(req: NextRequest) {
     stream?: boolean;
     skipPayment?: boolean;
     paymentTxId?: string;
+    intake?: SwapExecutorIntake;
+    quoteOnly?: boolean;
+    swapApproved?: boolean;
   };
 
   if (agentId === "yield-scout") {
@@ -53,6 +62,42 @@ export async function POST(req: NextRequest) {
       amountHbar,
       skipPayment,
       paymentTxId,
+    });
+
+    const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
+    const hashScanTopicUrl = auditTopicId
+      ? `https://hashscan.io/testnet/topic/${auditTopicId}`
+      : undefined;
+
+    return NextResponse.json({ ...result, hashScanTopicUrl });
+  }
+
+  if (agentId === "swap-executor") {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!intake?.tokenIn || !intake?.tokenOut || !intake?.amountIn) {
+      return NextResponse.json(
+        { error: "intake with tokenIn, tokenOut, amountIn required" },
+        { status: 400 }
+      );
+    }
+
+    const seDefaults = swapExecutorAgentConfig;
+    const result = await executeSwapExecutorRun({
+      sessionId,
+      intake,
+      budget: budget ?? seDefaults.defaultBudget,
+      approval: approval ?? seDefaults.defaultApproval,
+      amountHbar,
+      skipPayment,
+      paymentTxId,
+      swapApproved,
+      quoteOnly,
     });
 
     const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;

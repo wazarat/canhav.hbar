@@ -16,6 +16,11 @@ import {
   YIELD_SCOUT_TASK_PRICE_HBAR,
   getYieldScoutCounterpartyConfig,
 } from "@hbar/agents/yield-scout/config";
+import {
+  swapExecutorAgentConfig,
+  SWAP_EXECUTOR_TASK_PRICE_HBAR,
+  getSwapExecutorCounterpartyConfig,
+} from "@hbar/agents/swap-executor/config";
 import type { HbarAgentId } from "./agent-config";
 import { getAgentConfig } from "./agent-config";
 import { buildStubTaskResult, buildYieldScoutTaskResult } from "./x402/facilitator";
@@ -49,6 +54,14 @@ function resolveAgent(agentId?: HbarAgentId) {
       defaultPrice: YIELD_SCOUT_TASK_PRICE_HBAR,
     };
   }
+  if (id === "swap-executor") {
+    return {
+      agentId: id as HbarAgentId,
+      config: swapExecutorAgentConfig,
+      counterparty: getSwapExecutorCounterpartyConfig(),
+      defaultPrice: SWAP_EXECUTOR_TASK_PRICE_HBAR,
+    };
+  }
   return {
     agentId: "stub" as HbarAgentId,
     config: stubAgentConfig,
@@ -67,6 +80,8 @@ function policyStateLabel(sessionId: string): string {
       return "blocked by SpendLimit";
     case "blocked_counterparty":
       return "counterparty not allowlisted";
+    case "blocked_slippage":
+      return "blocked: slippage exceeded";
     case "approval_required":
       return "needs your approval";
     case "rejected":
@@ -108,7 +123,11 @@ export async function executeAgentPayment(req: PayRequest): Promise<PayResponse>
       amountHbar,
       recipientId,
       taskDescription:
-        agentId === "yield-scout" ? "yield-scout task purchase" : "stub task",
+        agentId === "yield-scout"
+          ? "yield-scout task purchase"
+          : agentId === "swap-executor"
+            ? "swap-executor task purchase"
+            : "stub task",
     });
 
     spendPolicy.recordSuccessfulSpend(

@@ -3,12 +3,23 @@ import {
   getPendingApproval,
   resolveApproval,
   logPolicyEvent,
+  isPaymentTool,
+  isWriteTool,
 } from "@hbar/lib/policy-state";
 import { executeAgentPayment } from "@hbar/lib/execute-agent-payment";
+import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
 import { stubAgentConfig } from "@hbar/agents/stub/config";
 import { yieldScoutAgentConfig } from "@hbar/agents/yield-scout/config";
+import { swapExecutorAgentConfig } from "@hbar/agents/swap-executor/config";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
+import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
+
+function resolveDefaults(agentId: HbarAgentId) {
+  if (agentId === "yield-scout") return yieldScoutAgentConfig;
+  if (agentId === "swap-executor") return swapExecutorAgentConfig;
+  return stubAgentConfig;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -19,6 +30,9 @@ export async function POST(req: NextRequest) {
     budget,
     approval,
     agentId = "stub",
+    intake,
+    paymentTxId,
+    skipPayment,
   } = body as {
     approvalId: string;
     approved: boolean;
@@ -26,6 +40,9 @@ export async function POST(req: NextRequest) {
     budget?: BudgetConfig;
     approval?: ApprovalConfig;
     agentId?: HbarAgentId;
+    intake?: SwapExecutorIntake;
+    paymentTxId?: string;
+    skipPayment?: boolean;
   };
 
   if (!approvalId || !sessionId) {
@@ -48,7 +65,9 @@ export async function POST(req: NextRequest) {
       amountHbar: pending.amountHbar,
       recipient: pending.recipient,
       decision: "rejected",
-      reason: "User rejected payment",
+      reason: isWriteTool(pending.tool)
+        ? "User rejected swap"
+        : "User rejected payment",
     });
     return NextResponse.json({
       status: "rejected",
@@ -56,8 +75,69 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const defaults =
-    agentId === "yield-scout" ? yieldScoutAgentConfig : stubAgentConfig;
+  const defaults = resolveDefaults(agentId);
+  const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
+  const hashScanTopicUrl = auditTopicId
+    ? `https://hashscan.io/testnet/topic/${auditTopicId}`
+    : undefined;
+
+  if (agentId === "swap-executor" && isWriteTool(pending.tool)) {
+    if (!intake?.tokenIn || !intake?.tokenOut || !intake?.amountIn) {
+      return NextResponse.json(
+        { error: "intake required to resume swap execution" },
+        { status: 400 }
+      );
+    }
+
+    const runResult = await executeSwapExecutorRun({
+      sessionId,
+      intake,
+      budget: budget ?? defaults.defaultBudget,
+      approval: approval ?? defaults.defaultApproval,
+      skipPayment: true,
+      paymentTxId,
+      swapApproved: true,
+    });
+
+    return NextResponse.json({ ...runResult, hashScanTopicUrl });
+  }
+
+  if (agentId === "swap-executor" && isPaymentTool(pending.tool)) {
+    const payResult = await executeAgentPayment({
+      sessionId,
+      budget: budget ?? defaults.defaultBudget,
+      approval: approval ?? defaults.defaultApproval,
+      amountHbar: pending.amountHbar,
+      agentId: "swap-executor",
+    });
+
+    if (payResult.status !== "success") {
+      return NextResponse.json({ ...payResult, hashScanTopicUrl });
+    }
+
+    if (!intake?.tokenIn || !intake?.tokenOut || !intake?.amountIn) {
+      return NextResponse.json({ ...payResult, hashScanTopicUrl });
+    }
+
+    const runResult = await executeSwapExecutorRun({
+      sessionId,
+      intake,
+      budget: budget ?? defaults.defaultBudget,
+      approval: approval ?? defaults.defaultApproval,
+      skipPayment: true,
+      paymentTxId: payResult.txId ?? paymentTxId,
+    });
+
+    return NextResponse.json({ ...runResult, hashScanTopicUrl });
+  }
+
+  if (agentId === "yield-scout" && skipPayment) {
+    return NextResponse.json({
+      status: "approved",
+      policyState: "within policy",
+      hashScanTopicUrl,
+    });
+  }
 
   const payResult = await executeAgentPayment({
     sessionId,
@@ -66,11 +146,6 @@ export async function POST(req: NextRequest) {
     amountHbar: pending.amountHbar,
     agentId,
   });
-
-  const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
-  const hashScanTopicUrl = auditTopicId
-    ? `https://hashscan.io/testnet/topic/${auditTopicId}`
-    : undefined;
 
   return NextResponse.json({ ...payResult, hashScanTopicUrl });
 }

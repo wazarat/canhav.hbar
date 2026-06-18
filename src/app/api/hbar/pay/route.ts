@@ -5,6 +5,10 @@ import {
   yieldScoutAgentConfig,
   YIELD_SCOUT_TASK_PRICE_HBAR,
 } from "@hbar/agents/yield-scout/config";
+import {
+  swapExecutorAgentConfig,
+  SWAP_EXECUTOR_TASK_PRICE_HBAR,
+} from "@hbar/agents/swap-executor/config";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 
@@ -26,10 +30,17 @@ export async function POST(req: NextRequest) {
     };
 
     const isYieldScout = agentId === "yield-scout";
-    const defaults = isYieldScout ? yieldScoutAgentConfig : stubAgentConfig;
+    const isSwapExecutor = agentId === "swap-executor";
+    const defaults = isYieldScout
+      ? yieldScoutAgentConfig
+      : isSwapExecutor
+        ? swapExecutorAgentConfig
+        : stubAgentConfig;
     const defaultAmount = isYieldScout
       ? YIELD_SCOUT_TASK_PRICE_HBAR
-      : STUB_TASK_PRICE_HBAR;
+      : isSwapExecutor
+        ? SWAP_EXECUTOR_TASK_PRICE_HBAR
+        : STUB_TASK_PRICE_HBAR;
 
     const response = await executeAgentPayment({
       sessionId,
