@@ -10,7 +10,7 @@ export const AGENT_CATALOG = [
     id: "swap-executor",
     name: "Swap Executor",
     description: "Quote + execute swaps within slippage bounds",
-    status: "coming_soon" as const,
+    status: "active" as const,
     milestone: "M3",
   },
   {

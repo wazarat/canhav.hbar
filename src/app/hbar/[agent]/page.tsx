@@ -22,10 +22,19 @@ import {
   yieldScoutAgentConfig,
   YIELD_SCOUT_TASK_PRICE_HBAR,
 } from "@hbar/agents/yield-scout/config.client";
+import {
+  swapExecutorAgentConfig,
+  SWAP_EXECUTOR_TASK_PRICE_HBAR,
+} from "@hbar/agents/swap-executor/config.client";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { YieldScoutReport } from "@hbar/agents/yield-scout/types";
+import type {
+  SwapExecutionReport,
+  SwapQuotePreview,
+  SwapExecutorIntake,
+} from "@hbar/agents/swap-executor/types";
 import { hbarSkillsUi, POLICY_BADGE } from "@hbar/lib/ui-tokens";
-import { ExternalLink, Loader2, Shield, TrendingUp } from "lucide-react";
+import { ArrowRightLeft, ExternalLink, Loader2, Shield, TrendingUp } from "lucide-react";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "ssr";
@@ -43,11 +52,16 @@ type PayResult = {
   reason?: string;
   result?: unknown;
   report?: YieldScoutReport;
+  swapReport?: SwapExecutionReport;
+  quote?: SwapQuotePreview;
   txId?: string;
+  swapTxId?: string;
   hashScanTopicUrl?: string;
   approvalId?: string;
+  approvalKind?: "payment" | "swap";
   recipient?: string;
   amountHbar?: number;
+  swapMetadata?: SwapQuotePreview;
 };
 
 function PolicyBadge({ policyState }: { policyState: string }) {
@@ -175,14 +189,31 @@ function ApprovalModal({
 
 function HashScanLinks({
   txId,
+  swapTxId,
   topicUrl,
+  paymentLabel = "View payment on HashScan",
+  swapLabel = "View swap on HashScan",
 }: {
   txId?: string;
+  swapTxId?: string;
   topicUrl?: string | null;
+  paymentLabel?: string;
+  swapLabel?: string;
 }) {
-  if (!txId && !topicUrl) return null;
+  if (!txId && !swapTxId && !topicUrl) return null;
   return (
     <div className="mt-6 flex flex-col gap-2">
+      {swapTxId && (
+        <a
+          href={`https://hashscan.io/testnet/transaction/${swapTxId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`inline-flex items-center gap-1 text-sm font-medium ${hbarSkillsUi.link}`}
+        >
+          {swapLabel}
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      )}
       {txId && (
         <a
           href={`https://hashscan.io/testnet/transaction/${txId}`}
@@ -190,7 +221,7 @@ function HashScanLinks({
           rel="noopener noreferrer"
           className={`inline-flex items-center gap-1 text-sm font-medium ${hbarSkillsUi.link}`}
         >
-          View payment on HashScan
+          {paymentLabel}
           <ExternalLink className="h-3.5 w-3.5" />
         </a>
       )}
@@ -292,6 +323,10 @@ export default function HbarAgentPage({
 
   if (agentMeta.id === "yield-scout") {
     return <YieldScoutRunner name={agentMeta.name} />;
+  }
+
+  if (agentMeta.id === "swap-executor") {
+    return <SwapExecutorRunner name={agentMeta.name} />;
   }
 
   return <StubAgentRunner name={agentMeta.name} />;
@@ -510,6 +545,441 @@ function YieldScoutRunner({ name }: { name: string }) {
           loading={loading}
           onApprove={handleApprove}
           taskLabel="Yield Scout task purchase"
+        />
+      </div>
+    </main>
+  );
+}
+
+function SwapApprovalModal({
+  open,
+  onOpenChange,
+  pending,
+  quote,
+  loading,
+  onApprove,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  pending: PayResult | null;
+  quote: SwapQuotePreview | null;
+  loading: boolean;
+  onApprove: (approved: boolean) => void;
+}) {
+  const meta = pending?.swapMetadata ?? quote;
+  const isSwap = pending?.approvalKind === "swap";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className={`${hbarSkillsUi.surface} ${hbarSkillsUi.text.primary} border-zinc-700 max-w-md`}>
+        <DialogHeader>
+          <DialogTitle>
+            {isSwap ? "Approve swap transaction" : "Approve task payment"}
+          </DialogTitle>
+          <DialogDescription className={hbarSkillsUi.text.secondary}>
+            {isSwap
+              ? "ContextualApprovalPolicy requires your sign-off before this swap executes on SaucerSwap testnet."
+              : "Write tasks always require approval before the task payment proceeds."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          {meta && (
+            <>
+              <p className="text-lg font-semibold">
+                {meta.tokenIn}{" "}
+                <span className={hbarSkillsUi.text.secondary}>→</span>{" "}
+                {meta.tokenOut}
+              </p>
+              <p>
+                <span className={hbarSkillsUi.text.secondary}>Amount in:</span>{" "}
+                {meta.amountIn} {meta.tokenIn}
+              </p>
+              <p>
+                <span className={hbarSkillsUi.text.secondary}>Expected out:</span>{" "}
+                {meta.expectedAmountOut} {meta.tokenOut}
+              </p>
+              {meta.priceImpact != null && (
+                <p
+                  className={
+                    meta.priceImpact > 1
+                      ? "font-medium text-amber-400"
+                      : hbarSkillsUi.text.primary
+                  }
+                >
+                  <span className={hbarSkillsUi.text.secondary}>Price impact:</span>{" "}
+                  {meta.priceImpact.toFixed(2)}%
+                </p>
+              )}
+              <p>
+                <span className={hbarSkillsUi.text.secondary}>Max slippage:</span>{" "}
+                {meta.maxSlippagePct}%
+              </p>
+            </>
+          )}
+          {!isSwap && (
+            <>
+              <p>
+                <span className={hbarSkillsUi.text.secondary}>Recipient:</span>{" "}
+                {pending?.recipient}
+              </p>
+              <p>
+                <span className={hbarSkillsUi.text.secondary}>Task fee:</span>{" "}
+                {pending?.amountHbar ?? SWAP_EXECUTOR_TASK_PRICE_HBAR} HBAR
+              </p>
+            </>
+          )}
+        </div>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            variant="outline"
+            className="border-zinc-600 bg-transparent text-zinc-300 hover:bg-zinc-800"
+            onClick={() => onApprove(false)}
+            disabled={loading}
+          >
+            Reject
+          </Button>
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={() => onApprove(true)}
+            disabled={loading}
+          >
+            Approve Transaction
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QuotePreviewCard({ quote }: { quote: SwapQuotePreview }) {
+  const highImpact =
+    quote.priceImpact != null && quote.priceImpact > quote.maxSlippagePct;
+
+  return (
+    <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
+      <CardHeader>
+        <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+          Quote preview
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <p className="text-lg font-semibold">
+          {quote.amountIn} {quote.tokenIn}{" "}
+          <span className={hbarSkillsUi.text.secondary}>→</span>{" "}
+          {quote.expectedAmountOut} {quote.tokenOut}
+        </p>
+        {quote.priceImpact != null && (
+          <p className={highImpact ? "font-medium text-amber-400" : ""}>
+            Price impact: {quote.priceImpact.toFixed(2)}%
+            {highImpact ? " — exceeds slippage bound" : ""}
+          </p>
+        )}
+        {quote.route.length > 0 && (
+          <p className={hbarSkillsUi.text.secondary}>
+            Route: {quote.route.join(" → ")}
+          </p>
+        )}
+        <p className={hbarSkillsUi.text.muted}>
+          Fresh until {new Date(quote.expiresAt).toLocaleTimeString()}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SwapResultPanel({ report }: { report: SwapExecutionReport }) {
+  return (
+    <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
+      <CardHeader>
+        <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+          Swap result
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        <p>{report.summary}</p>
+        <p>
+          {report.amountIn} {report.tokenIn} → {report.amountOut}{" "}
+          {report.tokenOut}
+        </p>
+        {report.priceImpact != null && (
+          <p>Price impact: {report.priceImpact.toFixed(2)}%</p>
+        )}
+        {report.swapTxId && (
+          <p className={hbarSkillsUi.text.secondary}>
+            Swap tx: {report.swapTxId}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SwapExecutorRunner({ name }: { name: string }) {
+  const sessionId = useMemo(() => getSessionId(), []);
+  const [tokenIn, setTokenIn] = useState("HBAR");
+  const [tokenOut, setTokenOut] = useState("SAUCE");
+  const [amountIn, setAmountIn] = useState(10);
+  const [maxSlippagePct, setMaxSlippagePct] = useState(0.5);
+  const [budget, setBudget] = useState<BudgetConfig>(
+    swapExecutorAgentConfig.defaultBudget
+  );
+  const [approval] = useState<ApprovalConfig>(
+    swapExecutorAgentConfig.defaultApproval
+  );
+  const [policyState, setPolicyState] = useState("within policy");
+  const [loading, setLoading] = useState(false);
+  const [quote, setQuote] = useState<SwapQuotePreview | null>(null);
+  const [swapReport, setSwapReport] = useState<SwapExecutionReport | null>(null);
+  const [lastResult, setLastResult] = useState<PayResult | null>(null);
+  const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+  const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+
+  const intake: SwapExecutorIntake = useMemo(
+    () => ({ tokenIn, tokenOut, amountIn, maxSlippagePct }),
+    [tokenIn, tokenOut, amountIn, maxSlippagePct]
+  );
+
+  const runApi = useCallback(
+    async (body: Record<string, unknown>) => {
+      const res = await fetch("/api/hbar/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          agentId: "swap-executor",
+          sessionId,
+          budget,
+          approval,
+          intake,
+          stream: false,
+          ...body,
+        }),
+      });
+      return (await res.json()) as PayResult & {
+        report?: SwapExecutionReport;
+        quote?: SwapQuotePreview;
+        swapTxId?: string;
+      };
+    },
+    [sessionId, budget, approval, intake]
+  );
+
+  const handleRunResult = (data: PayResult & {
+    report?: SwapExecutionReport;
+    quote?: SwapQuotePreview;
+    swapTxId?: string;
+  }) => {
+    setPolicyState(data.policyState ?? "within policy");
+    setLastResult(data);
+    if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
+
+    if (data.status === "pending_approval") {
+      setPendingApproval(data);
+      setApprovalOpen(true);
+      return false;
+    }
+
+    if (data.status === "success" && data.quote) {
+      setQuote(data.quote);
+    }
+    if (data.status === "success" && data.report) {
+      setSwapReport(data.report);
+      if (data.txId) setPaymentTxId(data.txId);
+    }
+    return data.status === "success";
+  };
+
+  const getQuote = async () => {
+    setLoading(true);
+    setSwapReport(null);
+    setLastResult(null);
+    try {
+      const data = await runApi({ quoteOnly: true });
+      handleRunResult(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const executeSwap = async () => {
+    setLoading(true);
+    setSwapReport(null);
+    setLastResult(null);
+    try {
+      const data = await runApi({
+        amountHbar: SWAP_EXECUTOR_TASK_PRICE_HBAR,
+      });
+      handleRunResult(data);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (approved: boolean) => {
+    if (!pendingApproval?.approvalId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hbar/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approvalId: pendingApproval.approvalId,
+          approved,
+          sessionId,
+          budget,
+          approval,
+          agentId: "swap-executor",
+          intake,
+          paymentTxId,
+        }),
+      });
+      const data = (await res.json()) as PayResult & {
+        report?: SwapExecutionReport;
+        swapTxId?: string;
+      };
+
+      setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
+      setLastResult(data);
+      setApprovalOpen(false);
+      setPendingApproval(null);
+
+      if (!approved) return;
+
+      if (data.txId) setPaymentTxId(data.txId);
+
+      if (data.status === "pending_approval") {
+        setPendingApproval(data);
+        setApprovalOpen(true);
+        return;
+      }
+
+      if (data.status === "success" && data.report) {
+        setSwapReport(data.report);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className={hbarSkillsUi.page}>
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Link href="/hbar" className={`text-sm ${hbarSkillsUi.text.secondary} hover:text-zinc-200`}>
+          ← All HBAR Skills agents
+        </Link>
+        <div className="mt-4 flex items-center gap-3">
+          <ArrowRightLeft className="h-8 w-8 text-indigo-400" />
+          <div>
+            <h1 className="text-2xl font-bold">{name}</h1>
+            <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
+              Write action · human approval gate · {SWAP_EXECUTOR_TASK_PRICE_HBAR} HBAR task fee
+            </p>
+          </div>
+        </div>
+
+        <Card className={`mt-8 ${hbarSkillsUi.surface}`}>
+          <CardHeader>
+            <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+              Swap intent
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Token in</span>
+              <input
+                value={tokenIn}
+                onChange={(e) => setTokenIn(e.target.value)}
+                className={hbarSkillsUi.input}
+                placeholder="HBAR"
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Token out</span>
+              <input
+                value={tokenOut}
+                onChange={(e) => setTokenOut(e.target.value)}
+                className={hbarSkillsUi.input}
+                placeholder="SAUCE"
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Amount in</span>
+              <input
+                type="number"
+                min={0.0001}
+                step={0.1}
+                value={amountIn}
+                onChange={(e) => setAmountIn(parseFloat(e.target.value) || 0)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Max slippage (%)</span>
+              <input
+                type="number"
+                min={0.01}
+                step={0.1}
+                value={maxSlippagePct}
+                onChange={(e) =>
+                  setMaxSlippagePct(parseFloat(e.target.value) || 0.5)
+                }
+                className={hbarSkillsUi.input}
+              />
+            </label>
+          </CardContent>
+        </Card>
+
+        <BudgetControls budget={budget} onChange={setBudget} />
+
+        <div className="mt-6">
+          <PolicyBadge policyState={policyState} />
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Button
+            variant="outline"
+            className="border-zinc-600 bg-transparent text-zinc-300 hover:bg-zinc-800"
+            onClick={getQuote}
+            disabled={loading || !tokenIn || !tokenOut || amountIn <= 0}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Get Quote
+          </Button>
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={executeSwap}
+            disabled={loading || !tokenIn || !tokenOut || amountIn <= 0}
+          >
+            Execute Swap ({SWAP_EXECUTOR_TASK_PRICE_HBAR} HBAR fee)
+          </Button>
+        </div>
+
+        {lastResult?.reason && lastResult.status === "blocked" && (
+          <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
+        )}
+
+        {quote && <QuotePreviewCard quote={quote} />}
+        {swapReport && <SwapResultPanel report={swapReport} />}
+
+        <HashScanLinks
+          txId={swapReport?.paymentTxId ?? paymentTxId ?? lastResult?.txId}
+          swapTxId={swapReport?.swapTxId ?? lastResult?.swapTxId}
+          topicUrl={hashScanTopicUrl}
+          paymentLabel="View task payment on HashScan"
+          swapLabel="View swap on HashScan"
+        />
+
+        <SwapApprovalModal
+          open={approvalOpen}
+          onOpenChange={setApprovalOpen}
+          pending={pendingApproval}
+          quote={quote}
+          loading={loading}
+          onApprove={handleApprove}
         />
       </div>
     </main>

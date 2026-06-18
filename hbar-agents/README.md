@@ -16,7 +16,7 @@ All development on **`ai-agent-bounty`** / feature branches — never merge to `
 - **`lib/registry-lookup.ts`** — ERC-8004 AgentRegistry + ReputationRegistry counterparty checks
 - **`lib/x402/`** — Pay-per-call task purchase (policy-gated)
 - **`lib/ui-tokens.ts`** — Shared enterprise UI tokens (M2+)
-- **`agents/`** — One folder per DeFi agent (stub + yield-scout in M2)
+- **`agents/`** — One folder per DeFi agent (stub, yield-scout, swap-executor)
 
 ## M1 acceptance
 
@@ -32,9 +32,17 @@ All development on **`ai-agent-bounty`** / feature branches — never merge to `
 3. Every decision + payment logged to HCS audit topic (HashScan link in UI)
 4. M1 stub flow unchanged at `/hbar/stub`
 
+## M3 acceptance (Swap Executor)
+
+1. `/hbar/swap-executor` executes a real token swap on SaucerSwap testnet within slippage bounds
+2. `taskType: "write"` forces human approval on task payment (Gate A) and swap execution (Gate B) every time
+3. SpendLimit, AllowedCounterparty (ERC-8004), and SlippagePolicy gate over-budget and out-of-bound swaps
+4. Payment, swap, and policy decisions logged to HCS audit topic (HashScan links in UI)
+5. M1 stub and M2 Yield Scout flows unchanged
+
 ## Environment
 
-See root `.env.example` for `HEDERA_OPERATOR_*`, `HBAR_AUDIT_TOPIC_ID`, `HBAR_STUB_WORKER_ID`, `HBAR_YIELD_SCOUT_WORKER_ID`.
+See root `.env.example` for `HEDERA_OPERATOR_*`, `HBAR_AUDIT_TOPIC_ID`, worker IDs, and `SAUCERSWAP_*` (M3).
 
 Create audit topic:
 
@@ -48,6 +56,8 @@ pnpm hbar:create-audit-topic
 
 **M2:** `@bonzofinancelabs/hak-bonzo-plugin`, `hak-pyth-plugin` (read-only market/price tools via v4 wrappers)
 
+**M3:** `hak-saucerswap-plugin` (quote + swap on SaucerSwap testnet)
+
 ## Routes
 
 | URL | Purpose |
@@ -55,6 +65,7 @@ pnpm hbar:create-audit-topic
 | `/hbar` | Agent catalog |
 | `/hbar/stub` | M1 policy demo |
 | `/hbar/yield-scout` | M2 Yield Scout (read-only APY report) |
+| `/hbar/swap-executor` | M3 Swap Executor (write swap + approval gate) |
 | `POST /api/hbar/pay` | Execute task payment through policy layer |
 | `POST /api/hbar/approve` | Human-in-the-loop approval callback |
-| `POST /api/hbar/run` | Agent run (Yield Scout orchestration) |
+| `POST /api/hbar/run` | Agent run (Yield Scout / Swap Executor orchestration) |
