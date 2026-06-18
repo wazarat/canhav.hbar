@@ -88,7 +88,7 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
   };
 
   const agentId = config.agentId ?? "stub";
-  if (agentId === "swap-executor") {
+  if (agentId === "swap-executor" || agentId === "price-feed-verifier") {
     applySaucerSwapContextConfig(context);
   }
 

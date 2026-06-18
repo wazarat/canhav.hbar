@@ -26,6 +26,11 @@ import {
   LP_HEALTH_TASK_PRICE_HBAR,
   getLpHealthCounterpartyConfig,
 } from "@hbar/agents/lp-health/config";
+import {
+  priceFeedVerifierAgentConfig,
+  PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
+  getPriceFeedVerifierCounterpartyConfig,
+} from "@hbar/agents/price-feed-verifier/config";
 import type { HbarAgentId } from "./agent-config";
 import { getAgentConfig } from "./agent-config";
 import { buildStubTaskResult, buildYieldScoutTaskResult } from "./x402/facilitator";
@@ -73,6 +78,14 @@ function resolveAgent(agentId?: HbarAgentId) {
       config: lpHealthAgentConfig,
       counterparty: getLpHealthCounterpartyConfig(),
       defaultPrice: LP_HEALTH_TASK_PRICE_HBAR,
+    };
+  }
+  if (id === "price-feed-verifier") {
+    return {
+      agentId: id as HbarAgentId,
+      config: priceFeedVerifierAgentConfig,
+      counterparty: getPriceFeedVerifierCounterpartyConfig(),
+      defaultPrice: PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
     };
   }
   return {
@@ -142,7 +155,9 @@ export async function executeAgentPayment(req: PayRequest): Promise<PayResponse>
             ? "swap-executor task purchase"
             : agentId === "lp-health"
               ? "lp-health task purchase"
-              : "stub task",
+              : agentId === "price-feed-verifier"
+                ? "price-feed-verifier task purchase"
+                : "stub task",
     });
 
     spendPolicy.recordSuccessfulSpend(

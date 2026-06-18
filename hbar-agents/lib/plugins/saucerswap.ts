@@ -16,6 +16,8 @@ const SWAP_EXECUTOR_TOOLS: readonly string[] = [
   SAUCERSWAP_SWAP_TOKENS_TOOL,
 ];
 
+const QUOTE_ONLY_TOOLS: readonly string[] = [SAUCERSWAP_GET_SWAP_QUOTE_TOOL];
+
 export interface SaucerSwapPluginConfig extends SaucerSwapNetworkDefaults {
   network?: "testnet" | "mainnet";
   apiKey?: string;
@@ -67,4 +69,15 @@ export const saucerswapExecutorPlugin: Plugin = {
     saucerswapPlugin
       .tools(context)
       .filter((tool) => SWAP_EXECUTOR_TOOLS.includes(tool.method)),
+};
+
+/** Quote-only SaucerSwap plugin — no swap tool (read-only agents). */
+export const saucerswapQuoteOnlyPlugin: Plugin = {
+  name: "saucerswap-quote",
+  description:
+    "SaucerSwap DEX quote reads on Hedera testnet (read-only price derivation)",
+  tools: (context: Context) =>
+    saucerswapPlugin
+      .tools(context)
+      .filter((tool) => QUOTE_ONLY_TOOLS.includes(tool.method)),
 };

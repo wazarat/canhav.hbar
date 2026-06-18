@@ -2,18 +2,23 @@ import type { Plugin } from "@hashgraph/hedera-agent-kit";
 import { pythPlugin } from "hak-pyth-plugin";
 import { hbarStubPlugin } from "./x402/pay";
 import { bonzoReadonlyPlugin } from "./plugins/bonzo-readonly";
-import { saucerswapExecutorPlugin } from "./plugins/saucerswap";
+import {
+  saucerswapExecutorPlugin,
+  saucerswapQuoteOnlyPlugin,
+} from "./plugins/saucerswap";
 import { stubAgentConfig } from "../agents/stub/config";
 import { yieldScoutAgentConfig } from "../agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "../agents/swap-executor/config";
 import { lpHealthAgentConfig } from "../agents/lp-health/config";
+import { priceFeedVerifierAgentConfig } from "../agents/price-feed-verifier/config";
 import type { BudgetConfig } from "./policy-state";
 
 export type HbarAgentId =
   | "stub"
   | "yield-scout"
   | "swap-executor"
-  | "lp-health";
+  | "lp-health"
+  | "price-feed-verifier";
 
 export interface AgentConfigBundle {
   id: HbarAgentId;
@@ -27,6 +32,7 @@ const TASK_PRICES: Record<HbarAgentId, number> = {
   "yield-scout": 1,
   "swap-executor": 1,
   "lp-health": 1,
+  "price-feed-verifier": 1,
 };
 
 export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
@@ -37,7 +43,9 @@ export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
         ? swapExecutorAgentConfig
         : agentId === "lp-health"
           ? lpHealthAgentConfig
-          : stubAgentConfig;
+          : agentId === "price-feed-verifier"
+            ? priceFeedVerifierAgentConfig
+            : stubAgentConfig;
   return {
     id: agentId,
     name: config.name,
@@ -57,7 +65,9 @@ export function getPluginsForAgent(
         ? [hbarStubPlugin, saucerswapExecutorPlugin]
         : agentId === "lp-health"
           ? [hbarStubPlugin, bonzoReadonlyPlugin]
-          : [hbarStubPlugin];
+          : agentId === "price-feed-verifier"
+            ? [hbarStubPlugin, pythPlugin, saucerswapQuoteOnlyPlugin]
+            : [hbarStubPlugin];
 
   return [...base, ...(extra ?? [])];
 }
@@ -74,6 +84,9 @@ export function buildSystemPrompt(
   }
   if (agentId === "lp-health") {
     return buildLpHealthSystemPrompt(budget);
+  }
+  if (agentId === "price-feed-verifier") {
+    return buildPriceFeedVerifierSystemPrompt(budget);
   }
   return buildStubSystemPrompt(budget);
 }
