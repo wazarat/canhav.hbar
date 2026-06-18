@@ -27,11 +27,11 @@
   },
   "peerDependencies": {
     "@hashgraph/hedera-agent-kit": "^4.0.0",
-    "@hashgraph/sdk": "^2.0.0"
+    "@hiero-ledger/sdk": "^2.0.0"
   },
   "devDependencies": {
     "@hashgraph/hedera-agent-kit": "^4.0.0",
-    "@hashgraph/sdk": "^2.81.0",
+    "@hiero-ledger/sdk": "^2.85.0",
     "typescript": "^5"
   }
 }
