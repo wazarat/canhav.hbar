@@ -26,6 +26,14 @@ import {
   swapExecutorAgentConfig,
   SWAP_EXECUTOR_TASK_PRICE_HBAR,
 } from "@hbar/agents/swap-executor/config.client";
+import {
+  lpHealthAgentConfig,
+  LP_HEALTH_TASK_PRICE_HBAR,
+} from "@hbar/agents/lp-health/config.client";
+import {
+  priceFeedVerifierAgentConfig,
+  PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
+} from "@hbar/agents/price-feed-verifier/config.client";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { YieldScoutReport } from "@hbar/agents/yield-scout/types";
 import type {
@@ -33,8 +41,13 @@ import type {
   SwapQuotePreview,
   SwapExecutorIntake,
 } from "@hbar/agents/swap-executor/types";
+import type { LpHealthIntake, LpHealthReport } from "@hbar/agents/lp-health/types";
+import type {
+  PriceVerifierIntake,
+  PriceVerifierReport,
+} from "@hbar/agents/price-feed-verifier/types";
 import { hbarSkillsUi, POLICY_BADGE } from "@hbar/lib/ui-tokens";
-import { ArrowRightLeft, ExternalLink, Loader2, Shield, TrendingUp } from "lucide-react";
+import { ArrowRightLeft, ExternalLink, HeartPulse, Loader2, Shield, TrendingUp, Scale } from "lucide-react";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "ssr";
@@ -52,6 +65,8 @@ type PayResult = {
   reason?: string;
   result?: unknown;
   report?: YieldScoutReport;
+  lpHealthReport?: LpHealthReport;
+  priceVerifierReport?: PriceVerifierReport;
   swapReport?: SwapExecutionReport;
   quote?: SwapQuotePreview;
   txId?: string;
@@ -327,6 +342,14 @@ export default function HbarAgentPage({
 
   if (agentMeta.id === "swap-executor") {
     return <SwapExecutorRunner name={agentMeta.name} />;
+  }
+
+  if (agentMeta.id === "lp-health") {
+    return <LpHealthRunner name={agentMeta.name} />;
+  }
+
+  if (agentMeta.id === "price-feed-verifier") {
+    return <PriceFeedVerifierRunner name={agentMeta.name} />;
   }
 
   return <StubAgentRunner name={agentMeta.name} />;
@@ -980,6 +1003,548 @@ function SwapExecutorRunner({ name }: { name: string }) {
           quote={quote}
           loading={loading}
           onApprove={handleApprove}
+        />
+      </div>
+    </main>
+  );
+}
+
+function LpHealthReportTable({ report }: { report: LpHealthReport }) {
+  return (
+    <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
+      <CardHeader>
+        <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+          LP health report
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className={`text-sm ${hbarSkillsUi.text.primary}`}>{report.summary}</p>
+        <p className={`text-xs ${hbarSkillsUi.text.secondary}`}>
+          Alert threshold: health factor &lt; {report.alertThreshold}
+        </p>
+        {report.positions.length > 0 ? (
+          <div className="overflow-x-auto rounded-md border border-zinc-700">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className={`${hbarSkillsUi.muted} ${hbarSkillsUi.text.secondary}`}>
+                <tr>
+                  <th className="px-3 py-2 font-medium">Protocol</th>
+                  <th className="px-3 py-2 font-medium">Asset</th>
+                  <th className="px-3 py-2 font-medium">Health factor</th>
+                  <th className="px-3 py-2 font-medium">Utilization</th>
+                  <th className="px-3 py-2 font-medium">IL exposure</th>
+                  <th className="px-3 py-2 font-medium">Flagged</th>
+                  <th className="px-3 py-2 font-medium">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.positions.map((row, i) => (
+                  <tr key={i} className="border-t border-zinc-800">
+                    <td className="px-3 py-2">{row.protocol}</td>
+                    <td className="px-3 py-2">{row.asset}</td>
+                    <td className="px-3 py-2">
+                      {row.healthFactor != null ? row.healthFactor.toFixed(2) : "—"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {row.utilization != null ? `${row.utilization.toFixed(1)}%` : "—"}
+                    </td>
+                    <td className="px-3 py-2">{row.ilExposure}</td>
+                    <td className="px-3 py-2">
+                      {row.flagged ? (
+                        <span className="text-amber-400">Yes</span>
+                      ) : (
+                        "No"
+                      )}
+                    </td>
+                    <td className={`px-3 py-2 ${hbarSkillsUi.text.secondary}`}>
+                      {row.note ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
+            No positions returned.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LpHealthRunner({ name }: { name: string }) {
+  const sessionId = useMemo(() => getSessionId(), []);
+  const [protocol, setProtocol] = useState<"Bonzo" | "SaucerSwap">("Bonzo");
+  const [asset, setAsset] = useState("HBAR");
+  const [suppliedUsd, setSuppliedUsd] = useState(1000);
+  const [borrowedUsd, setBorrowedUsd] = useState(0);
+  const [alertThreshold, setAlertThreshold] = useState(1.2);
+  const [budget, setBudget] = useState<BudgetConfig>(lpHealthAgentConfig.defaultBudget);
+  const [approval] = useState<ApprovalConfig>(lpHealthAgentConfig.defaultApproval);
+  const [policyState, setPolicyState] = useState("within policy");
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<LpHealthReport | null>(null);
+  const [lastResult, setLastResult] = useState<PayResult | null>(null);
+  const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+
+  const intake: LpHealthIntake = useMemo(
+    () => ({
+      positions: [{ protocol, asset, suppliedUsd, borrowedUsd: borrowedUsd || undefined }],
+      alertThreshold,
+    }),
+    [protocol, asset, suppliedUsd, borrowedUsd, alertThreshold]
+  );
+
+  const runHealthCheck = useCallback(
+    async (opts: { skipPayment?: boolean; paymentTxId?: string } = {}) => {
+      setLoading(true);
+      if (!opts.skipPayment) {
+        setReport(null);
+        setLastResult(null);
+      }
+      try {
+        const res = await fetch("/api/hbar/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-session-id": sessionId,
+          },
+          body: JSON.stringify({
+            agentId: "lp-health",
+            sessionId,
+            budget,
+            approval,
+            intake,
+            amountHbar: LP_HEALTH_TASK_PRICE_HBAR,
+            stream: false,
+            ...opts,
+          }),
+        });
+        const data = (await res.json()) as PayResult & { report?: LpHealthReport };
+        setPolicyState(data.policyState ?? "within policy");
+        setLastResult(data);
+        if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
+
+        if (data.status === "pending_approval") {
+          setPendingApproval(data);
+          setApprovalOpen(true);
+          return;
+        }
+
+        if (data.status === "success" && data.report) {
+          setReport(data.report);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId, budget, approval, intake]
+  );
+
+  const handleApprove = async (approved: boolean) => {
+    if (!pendingApproval?.approvalId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hbar/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approvalId: pendingApproval.approvalId,
+          approved,
+          sessionId,
+          budget,
+          approval,
+          agentId: "lp-health",
+        }),
+      });
+      const data = (await res.json()) as PayResult;
+      setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
+      setLastResult(data);
+      setApprovalOpen(false);
+      setPendingApproval(null);
+
+      if (approved && data.status === "success") {
+        await runHealthCheck({ skipPayment: true, paymentTxId: data.txId });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className={hbarSkillsUi.page}>
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Link href="/hbar" className={`text-sm ${hbarSkillsUi.text.secondary} hover:text-zinc-200`}>
+          ← All HBAR Skills agents
+        </Link>
+        <div className="mt-4 flex items-center gap-3">
+          <HeartPulse className="h-8 w-8 text-indigo-400" />
+          <div>
+            <h1 className="text-2xl font-bold">{name}</h1>
+            <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
+              Read-only position risk · {LP_HEALTH_TASK_PRICE_HBAR} HBAR per run
+            </p>
+          </div>
+        </div>
+
+        <Card className={`mt-8 ${hbarSkillsUi.surface}`}>
+          <CardHeader>
+            <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+              Position intake
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Protocol</span>
+              <select
+                value={protocol}
+                onChange={(e) => setProtocol(e.target.value as "Bonzo" | "SaucerSwap")}
+                className={hbarSkillsUi.input}
+              >
+                <option value="Bonzo">Bonzo</option>
+                <option value="SaucerSwap">SaucerSwap</option>
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Asset</span>
+              <input
+                value={asset}
+                onChange={(e) => setAsset(e.target.value)}
+                className={hbarSkillsUi.input}
+                placeholder="HBAR"
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Supplied (USD)</span>
+              <input
+                type="number"
+                min={0}
+                value={suppliedUsd}
+                onChange={(e) => setSuppliedUsd(parseFloat(e.target.value) || 0)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Borrowed (USD)</span>
+              <input
+                type="number"
+                min={0}
+                value={borrowedUsd}
+                onChange={(e) => setBorrowedUsd(parseFloat(e.target.value) || 0)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+            <label className="grid gap-1 text-sm sm:col-span-2">
+              <span className={hbarSkillsUi.text.secondary}>
+                Alert threshold (health factor)
+              </span>
+              <input
+                type="number"
+                min={1}
+                step={0.1}
+                value={alertThreshold}
+                onChange={(e) => setAlertThreshold(parseFloat(e.target.value) || 1.2)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+          </CardContent>
+        </Card>
+
+        <BudgetControls budget={budget} onChange={setBudget} />
+
+        <div className="mt-6">
+          <PolicyBadge policyState={policyState} />
+        </div>
+
+        <div className="mt-6">
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={() => runHealthCheck()}
+            disabled={loading || !asset.trim()}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Run LP Health Check ({LP_HEALTH_TASK_PRICE_HBAR} HBAR)
+          </Button>
+        </div>
+
+        {lastResult?.reason && lastResult.status === "blocked" && (
+          <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
+        )}
+
+        {report && <LpHealthReportTable report={report} />}
+
+        <HashScanLinks
+          txId={report?.paymentTxId ?? lastResult?.txId}
+          topicUrl={hashScanTopicUrl}
+        />
+
+        <ApprovalModal
+          open={approvalOpen}
+          onOpenChange={setApprovalOpen}
+          pending={pendingApproval}
+          loading={loading}
+          onApprove={handleApprove}
+          taskLabel="LP Health Check task purchase"
+        />
+      </div>
+    </main>
+  );
+}
+
+function PriceVerifierReportCard({ report }: { report: PriceVerifierReport }) {
+  const verdictColor =
+    report.verdict === "aligned"
+      ? "text-emerald-400"
+      : report.verdict === "minor_divergence"
+        ? "text-amber-400"
+        : "text-red-400";
+
+  return (
+    <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
+      <CardHeader>
+        <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+          Price verification report
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p className={hbarSkillsUi.text.primary}>{report.summary}</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <p>
+            <span className={hbarSkillsUi.text.secondary}>Pair:</span>{" "}
+            {report.baseToken}/{report.quoteToken}
+          </p>
+          <p>
+            <span className={hbarSkillsUi.text.secondary}>Divergence:</span>{" "}
+            {report.divergenceBps} bps
+          </p>
+          <p>
+            <span className={hbarSkillsUi.text.secondary}>Pool price:</span>{" "}
+            {report.poolImpliedPrice}
+          </p>
+          <p>
+            <span className={hbarSkillsUi.text.secondary}>Pyth price:</span>{" "}
+            {report.pythPrice}
+          </p>
+        </div>
+        <p className={`font-medium ${verdictColor}`}>
+          Verdict: {report.verdict.replace(/_/g, " ")}
+        </p>
+        {report.pythPublishTime && (
+          <p className={hbarSkillsUi.text.muted}>
+            Pyth publish time: {new Date(report.pythPublishTime).toLocaleString()}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function PriceFeedVerifierRunner({ name }: { name: string }) {
+  const sessionId = useMemo(() => getSessionId(), []);
+  const [baseToken, setBaseToken] = useState("HBAR");
+  const [quoteToken, setQuoteToken] = useState("USDC");
+  const [referenceAmount, setReferenceAmount] = useState(1);
+  const [divergenceBps, setDivergenceBps] = useState(50);
+  const [budget, setBudget] = useState<BudgetConfig>(
+    priceFeedVerifierAgentConfig.defaultBudget
+  );
+  const [approval] = useState<ApprovalConfig>(
+    priceFeedVerifierAgentConfig.defaultApproval
+  );
+  const [policyState, setPolicyState] = useState("within policy");
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<PriceVerifierReport | null>(null);
+  const [lastResult, setLastResult] = useState<PayResult | null>(null);
+  const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+
+  const intake: PriceVerifierIntake = useMemo(
+    () => ({ baseToken, quoteToken, referenceAmount, divergenceBps }),
+    [baseToken, quoteToken, referenceAmount, divergenceBps]
+  );
+
+  const runVerifier = useCallback(
+    async (opts: { skipPayment?: boolean; paymentTxId?: string } = {}) => {
+      setLoading(true);
+      if (!opts.skipPayment) {
+        setReport(null);
+        setLastResult(null);
+      }
+      try {
+        const res = await fetch("/api/hbar/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-session-id": sessionId,
+          },
+          body: JSON.stringify({
+            agentId: "price-feed-verifier",
+            sessionId,
+            budget,
+            approval,
+            intake,
+            amountHbar: PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
+            stream: false,
+            ...opts,
+          }),
+        });
+        const data = (await res.json()) as PayResult & {
+          report?: PriceVerifierReport;
+        };
+        setPolicyState(data.policyState ?? "within policy");
+        setLastResult(data);
+        if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
+
+        if (data.status === "pending_approval") {
+          setPendingApproval(data);
+          setApprovalOpen(true);
+          return;
+        }
+
+        if (data.status === "success" && data.report) {
+          setReport(data.report);
+        }
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId, budget, approval, intake]
+  );
+
+  const handleApprove = async (approved: boolean) => {
+    if (!pendingApproval?.approvalId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hbar/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approvalId: pendingApproval.approvalId,
+          approved,
+          sessionId,
+          budget,
+          approval,
+          agentId: "price-feed-verifier",
+        }),
+      });
+      const data = (await res.json()) as PayResult;
+      setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
+      setLastResult(data);
+      setApprovalOpen(false);
+      setPendingApproval(null);
+
+      if (approved) {
+        await runVerifier({ skipPayment: true, paymentTxId: data.txId });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className={hbarSkillsUi.page}>
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Link href="/hbar" className={`text-sm ${hbarSkillsUi.text.secondary} hover:text-zinc-200`}>
+          ← All HBAR Skills agents
+        </Link>
+        <div className="mt-4 flex items-center gap-3">
+          <Scale className="h-8 w-8 text-indigo-400" />
+          <div>
+            <h1 className="text-2xl font-bold">{name}</h1>
+            <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
+              Read-only oracle check · {PRICE_FEED_VERIFIER_TASK_PRICE_HBAR} HBAR per run
+            </p>
+          </div>
+        </div>
+
+        <Card className={`mt-8 ${hbarSkillsUi.surface}`}>
+          <CardHeader>
+            <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+              Token pair to verify
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Base token</span>
+              <input
+                value={baseToken}
+                onChange={(e) => setBaseToken(e.target.value)}
+                className={hbarSkillsUi.input}
+                placeholder="HBAR"
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Quote token</span>
+              <input
+                value={quoteToken}
+                onChange={(e) => setQuoteToken(e.target.value)}
+                className={hbarSkillsUi.input}
+                placeholder="USDC"
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Reference amount</span>
+              <input
+                type="number"
+                min={0.0001}
+                step={0.1}
+                value={referenceAmount}
+                onChange={(e) => setReferenceAmount(parseFloat(e.target.value) || 1)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className={hbarSkillsUi.text.secondary}>Divergence threshold (bps)</span>
+              <input
+                type="number"
+                min={1}
+                value={divergenceBps}
+                onChange={(e) => setDivergenceBps(parseInt(e.target.value, 10) || 50)}
+                className={hbarSkillsUi.input}
+              />
+            </label>
+          </CardContent>
+        </Card>
+
+        <BudgetControls budget={budget} onChange={setBudget} />
+
+        <div className="mt-6">
+          <PolicyBadge policyState={policyState} />
+        </div>
+
+        <div className="mt-6">
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={() => runVerifier()}
+            disabled={loading || !baseToken.trim() || !quoteToken.trim()}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Verify Price Feed ({PRICE_FEED_VERIFIER_TASK_PRICE_HBAR} HBAR)
+          </Button>
+        </div>
+
+        {lastResult?.reason && lastResult.status === "blocked" && (
+          <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
+        )}
+
+        {report && <PriceVerifierReportCard report={report} />}
+
+        <HashScanLinks
+          txId={report?.paymentTxId ?? lastResult?.txId}
+          topicUrl={hashScanTopicUrl}
+        />
+
+        <ApprovalModal
+          open={approvalOpen}
+          onOpenChange={setApprovalOpen}
+          pending={pendingApproval}
+          loading={loading}
+          onApprove={handleApprove}
+          taskLabel="Price-Feed Verifier task purchase"
         />
       </div>
     </main>

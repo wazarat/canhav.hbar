@@ -17,7 +17,7 @@ export const AGENT_CATALOG = [
     id: "lp-health",
     name: "LP Health Check",
     description: "Position risk report (health factor, IL exposure)",
-    status: "coming_soon" as const,
+    status: "active" as const,
     milestone: "M4",
   },
   {
@@ -38,7 +38,7 @@ export const AGENT_CATALOG = [
     id: "price-feed-verifier",
     name: "Price-Feed Verifier",
     description: "Cross-check pool price vs Pyth oracle",
-    status: "coming_soon" as const,
+    status: "active" as const,
     milestone: "M4",
   },
   {

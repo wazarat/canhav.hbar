@@ -7,11 +7,24 @@ import {
   yieldScoutAgentConfig,
 } from "@hbar/agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "@hbar/agents/swap-executor/config";
+import { lpHealthAgentConfig } from "@hbar/agents/lp-health/config";
+import { priceFeedVerifierAgentConfig } from "@hbar/agents/price-feed-verifier/config";
 import { executeYieldScoutRun } from "@hbar/lib/execute-yield-scout-run";
 import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
+import { executeLpHealthRun } from "@hbar/lib/execute-lp-health-run";
+import { executePriceFeedVerifierRun } from "@hbar/lib/execute-price-feed-verifier-run";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
+import type { LpHealthIntake } from "@hbar/agents/lp-health/types";
+import type { PriceVerifierIntake } from "@hbar/agents/price-feed-verifier/types";
+
+function hashScanTopicUrl() {
+  const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
+  return auditTopicId
+    ? `https://hashscan.io/testnet/topic/${auditTopicId}`
+    : undefined;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -40,7 +53,7 @@ export async function POST(req: NextRequest) {
     stream?: boolean;
     skipPayment?: boolean;
     paymentTxId?: string;
-    intake?: SwapExecutorIntake;
+    intake?: SwapExecutorIntake | LpHealthIntake | PriceVerifierIntake;
     quoteOnly?: boolean;
     swapApproved?: boolean;
   };
@@ -80,7 +93,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!intake?.tokenIn || !intake?.tokenOut || !intake?.amountIn) {
+    if (!intake || !("tokenIn" in intake) || !intake.tokenIn || !intake.tokenOut || !intake.amountIn) {
       return NextResponse.json(
         { error: "intake with tokenIn, tokenOut, amountIn required" },
         { status: 400 }
@@ -90,7 +103,7 @@ export async function POST(req: NextRequest) {
     const seDefaults = swapExecutorAgentConfig;
     const result = await executeSwapExecutorRun({
       sessionId,
-      intake,
+      intake: intake as SwapExecutorIntake,
       budget: budget ?? seDefaults.defaultBudget,
       approval: approval ?? seDefaults.defaultApproval,
       amountHbar,
@@ -106,6 +119,66 @@ export async function POST(req: NextRequest) {
       : undefined;
 
     return NextResponse.json({ ...result, hashScanTopicUrl });
+  }
+
+  if (agentId === "lp-health") {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    const lhIntake = intake as LpHealthIntake | undefined;
+    if (!lhIntake?.positions?.length) {
+      return NextResponse.json(
+        { error: "intake with positions array required" },
+        { status: 400 }
+      );
+    }
+
+    const lhDefaults = lpHealthAgentConfig;
+    const result = await executeLpHealthRun({
+      sessionId,
+      intake: lhIntake,
+      budget: budget ?? lhDefaults.defaultBudget,
+      approval: approval ?? lhDefaults.defaultApproval,
+      amountHbar,
+      skipPayment,
+      paymentTxId,
+    });
+
+    return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });
+  }
+
+  if (agentId === "price-feed-verifier") {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    const pvIntake = intake as PriceVerifierIntake | undefined;
+    if (!pvIntake?.baseToken || !pvIntake?.quoteToken) {
+      return NextResponse.json(
+        { error: "intake with baseToken and quoteToken required" },
+        { status: 400 }
+      );
+    }
+
+    const pvDefaults = priceFeedVerifierAgentConfig;
+    const result = await executePriceFeedVerifierRun({
+      sessionId,
+      intake: pvIntake,
+      budget: budget ?? pvDefaults.defaultBudget,
+      approval: approval ?? pvDefaults.defaultApproval,
+      amountHbar,
+      skipPayment,
+      paymentTxId,
+    });
+
+    return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });
   }
 
   if (!process.env.OPENAI_API_KEY) {

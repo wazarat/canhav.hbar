@@ -11,6 +11,8 @@ import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
 import { stubAgentConfig } from "@hbar/agents/stub/config";
 import { yieldScoutAgentConfig } from "@hbar/agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "@hbar/agents/swap-executor/config";
+import { lpHealthAgentConfig } from "@hbar/agents/lp-health/config";
+import { priceFeedVerifierAgentConfig } from "@hbar/agents/price-feed-verifier/config";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
@@ -18,6 +20,8 @@ import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
 function resolveDefaults(agentId: HbarAgentId) {
   if (agentId === "yield-scout") return yieldScoutAgentConfig;
   if (agentId === "swap-executor") return swapExecutorAgentConfig;
+  if (agentId === "lp-health") return lpHealthAgentConfig;
+  if (agentId === "price-feed-verifier") return priceFeedVerifierAgentConfig;
   return stubAgentConfig;
 }
 
@@ -132,6 +136,17 @@ export async function POST(req: NextRequest) {
   }
 
   if (agentId === "yield-scout" && skipPayment) {
+    return NextResponse.json({
+      status: "approved",
+      policyState: "within policy",
+      hashScanTopicUrl,
+    });
+  }
+
+  if (
+    (agentId === "lp-health" || agentId === "price-feed-verifier") &&
+    skipPayment
+  ) {
     return NextResponse.json({
       status: "approved",
       policyState: "within policy",
