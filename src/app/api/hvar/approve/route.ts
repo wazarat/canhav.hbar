@@ -4,9 +4,11 @@ import {
   resolveApproval,
   logPolicyEvent,
 } from "@hvar/lib/policy-state";
-import { executeStubPayment } from "@hvar/lib/execute-stub-pay";
+import { executeAgentPayment } from "@hvar/lib/execute-agent-payment";
 import { stubAgentConfig } from "@hvar/agents/stub/config";
+import { yieldScoutAgentConfig } from "@hvar/agents/yield-scout/config";
 import type { BudgetConfig, ApprovalConfig } from "@hvar/lib/policy-state";
+import type { HvarAgentId } from "@hvar/lib/agent-config";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -14,14 +16,16 @@ export async function POST(req: NextRequest) {
     approvalId,
     approved,
     sessionId,
-    budget = stubAgentConfig.defaultBudget,
-    approval = stubAgentConfig.defaultApproval,
+    budget,
+    approval,
+    agentId = "stub",
   } = body as {
     approvalId: string;
     approved: boolean;
     sessionId: string;
     budget?: BudgetConfig;
     approval?: ApprovalConfig;
+    agentId?: HvarAgentId;
   };
 
   if (!approvalId || !sessionId) {
@@ -52,12 +56,21 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const payResult = await executeStubPayment({
+  const defaults =
+    agentId === "yield-scout" ? yieldScoutAgentConfig : stubAgentConfig;
+
+  const payResult = await executeAgentPayment({
     sessionId,
-    budget,
-    approval,
+    budget: budget ?? defaults.defaultBudget,
+    approval: approval ?? defaults.defaultApproval,
     amountHbar: pending.amountHbar,
+    agentId,
   });
 
-  return NextResponse.json(payResult);
+  const auditTopicId = process.env.HVAR_AUDIT_TOPIC_ID;
+  const hashScanTopicUrl = auditTopicId
+    ? `https://hashscan.io/testnet/topic/${auditTopicId}`
+    : undefined;
+
+  return NextResponse.json({ ...payResult, hashScanTopicUrl });
 }

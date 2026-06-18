@@ -1,28 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
-import { executeStubPayment } from "@hvar/lib/execute-stub-pay";
+import { executeAgentPayment } from "@hvar/lib/execute-agent-payment";
 import { stubAgentConfig, STUB_TASK_PRICE_HBAR } from "@hvar/agents/stub/config";
+import {
+  yieldScoutAgentConfig,
+  YIELD_SCOUT_TASK_PRICE_HBAR,
+} from "@hvar/agents/yield-scout/config";
 import type { BudgetConfig, ApprovalConfig } from "@hvar/lib/policy-state";
+import type { HvarAgentId } from "@hvar/lib/agent-config";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
       sessionId = req.headers.get("x-session-id") ?? "anonymous",
-      budget = stubAgentConfig.defaultBudget,
-      approval = stubAgentConfig.defaultApproval,
-      amountHbar = STUB_TASK_PRICE_HBAR,
+      budget,
+      approval,
+      amountHbar,
+      agentId = "stub",
     } = body as {
       sessionId?: string;
       budget?: BudgetConfig;
       approval?: ApprovalConfig;
       amountHbar?: number;
+      agentId?: HvarAgentId;
     };
 
-    const response = await executeStubPayment({
+    const isYieldScout = agentId === "yield-scout";
+    const defaults = isYieldScout ? yieldScoutAgentConfig : stubAgentConfig;
+    const defaultAmount = isYieldScout
+      ? YIELD_SCOUT_TASK_PRICE_HBAR
+      : STUB_TASK_PRICE_HBAR;
+
+    const response = await executeAgentPayment({
       sessionId,
-      budget,
-      approval,
-      amountHbar,
+      budget: budget ?? defaults.defaultBudget,
+      approval: approval ?? defaults.defaultApproval,
+      amountHbar: amountHbar ?? defaultAmount,
+      agentId,
     });
 
     const auditTopicId = process.env.HVAR_AUDIT_TOPIC_ID;

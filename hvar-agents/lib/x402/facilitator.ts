@@ -1,4 +1,5 @@
 import { transferHbar } from "../hedera-client";
+import type { YieldScoutReport } from "@hvar/agents/yield-scout/types";
 
 /**
  * Facilitates x402-style pay-per-call: operator signs and submits HBAR transfer.
@@ -23,5 +24,19 @@ export function buildStubTaskResult(paymentTxId: string): {
       "Stub task completed. In M2 this slot returns a Yield Scout APY report.",
     paymentTxId,
     completedAt: new Date().toISOString(),
+  };
+}
+
+export function buildYieldScoutTaskResult(
+  paymentTxId: string,
+  report?: Partial<YieldScoutReport>
+): YieldScoutReport {
+  return {
+    recommendation:
+      report?.recommendation ??
+      "Yield Scout task purchased. Run analysis to populate ranked markets.",
+    ranked: report?.ranked ?? [],
+    paymentTxId,
+    completedAt: report?.completedAt ?? new Date().toISOString(),
   };
 }
