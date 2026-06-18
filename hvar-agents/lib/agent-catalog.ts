@@ -3,7 +3,7 @@ export const AGENT_CATALOG = [
     id: "yield-scout",
     name: "Yield Scout",
     description: "Best risk-adjusted APY across Bonzo lending + HBAR",
-    status: "coming_soon" as const,
+    status: "active" as const,
     milestone: "M2",
   },
   {
