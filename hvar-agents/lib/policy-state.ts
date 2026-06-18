@@ -15,9 +15,17 @@ export interface ApprovalConfig {
   alwaysApproveTaskTypes: string[];
 }
 
+export interface RegistryConfig {
+  enabled: boolean;
+  minReputation: number;
+  agentId?: number;
+  fallbackToAllowlist: boolean;
+}
+
 export interface CounterpartyConfig {
   allowlist: string[];
   minReputation?: number;
+  registry?: RegistryConfig;
 }
 
 export interface SessionSpendState {

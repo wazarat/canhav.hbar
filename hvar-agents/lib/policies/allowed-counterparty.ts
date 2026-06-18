@@ -27,6 +27,12 @@ export class AllowedCounterpartyPolicy extends AbstractPolicy {
     const recipient = extractRecipient(params.rawParams);
     if (!recipient) return false;
 
+    // When ERC-8004 registry mode is enabled, async validation runs in
+    // validateCounterpartyBeforePayment() before tool execution.
+    if (this.config.registry?.enabled) {
+      return false;
+    }
+
     const allowed = this.config.allowlist.some(
       (id) => id.toLowerCase() === recipient.toLowerCase()
     );

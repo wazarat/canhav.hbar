@@ -8,7 +8,12 @@ import {
 import type { Client } from "@hiero-ledger/sdk";
 import { TransferTransaction, Hbar, AccountId } from "@hiero-ledger/sdk";
 import { buildStubTaskResult } from "./facilitator";
-import { getStubWorkerId } from "../hedera-client";
+import { getStubWorkerId, getYieldScoutWorkerId } from "../hedera-client";
+import { validateCounterpartyBeforePayment } from "../validate-counterparty";
+import {
+  getContextSessionId,
+  getSessionCounterparty,
+} from "../runtime-session";
 
 export const HVAR_STUB_PAY_TOOL = "hvar_stub_pay";
 
@@ -45,16 +50,39 @@ export class StubPayTool extends BaseTool<StubPayParams, NormalisedParams> {
 
   async normalizeParams(
     params: StubPayParams,
-    _context: Context,
+    context: Context,
     _client: Client
   ): Promise<NormalisedParams> {
     const parsed = stubPaySchema.parse(params);
-    this.lastParams = {
-      recipientId: parsed.recipientId ?? getStubWorkerId(),
+    const recipientId =
+      parsed.recipientId ??
+      (parsed.taskDescription?.includes("yield")
+        ? getYieldScoutWorkerId()
+        : getStubWorkerId());
+
+    const normalised: NormalisedParams = {
+      recipientId,
       amountHbar: parsed.amountHbar,
       taskDescription: parsed.taskDescription,
     };
-    return this.lastParams;
+
+    const sessionId = getContextSessionId(context as { sessionId?: string });
+    const counterparty = sessionId
+      ? getSessionCounterparty(sessionId)
+      : undefined;
+
+    if (sessionId && counterparty?.registry?.enabled) {
+      await validateCounterpartyBeforePayment(
+        sessionId,
+        HVAR_STUB_PAY_TOOL,
+        recipientId,
+        normalised.amountHbar,
+        counterparty
+      );
+    }
+
+    this.lastParams = normalised;
+    return normalised;
   }
 
   async coreAction(
