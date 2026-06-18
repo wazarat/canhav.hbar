@@ -4,16 +4,19 @@ import {
 } from "@hashgraph/hedera-agent-kit";
 import {
   PAYMENT_TOOLS,
+  WRITE_TOOLS,
   createPendingApproval,
   isApprovalGranted,
+  isWriteTool,
   logPolicyEvent,
   type ApprovalConfig,
+  type SwapApprovalMetadata,
 } from "../policy-state";
 
 export class ContextualApprovalPolicy extends AbstractPolicy {
   name = "ContextualApprovalPolicy";
-  description = "Requires human approval for high-value or write task payments";
-  relevantTools = [...PAYMENT_TOOLS];
+  description = "Requires human approval for high-value payments and all write actions";
+  relevantTools = [...PAYMENT_TOOLS, ...WRITE_TOOLS];
 
   constructor(
     private readonly sessionId: string,
@@ -27,16 +30,29 @@ export class ContextualApprovalPolicy extends AbstractPolicy {
     params: PostParamsNormalizationParams,
     method: string
   ): boolean {
-    const amountHbar = extractAmountHbar(params.rawParams);
-    const recipient = extractRecipient(params.rawParams) ?? "unknown";
+    const isSwap = isWriteTool(method);
+    const amountHbar = isSwap ? 0 : extractAmountHbar(params.rawParams);
+    const recipient = isSwap
+      ? "SaucerSwap router"
+      : (extractRecipient(params.rawParams) ?? "unknown");
+    const metadata = isSwap ? extractSwapMetadata(params.rawParams) : undefined;
 
     const needsApproval =
+      isSwap ||
       amountHbar >= this.config.autoApproveBelowHbar ||
       this.config.alwaysApproveTaskTypes.includes(this.taskType);
 
     if (!needsApproval) return false;
 
-    if (isApprovalGranted(this.sessionId, method, recipient, amountHbar)) {
+    if (
+      isApprovalGranted(
+        this.sessionId,
+        method,
+        recipient,
+        amountHbar,
+        metadata
+      )
+    ) {
       return false;
     }
 
@@ -46,19 +62,22 @@ export class ContextualApprovalPolicy extends AbstractPolicy {
       recipient,
       amountHbar,
       taskType: this.taskType,
+      metadata,
     });
 
-    const reason = `Needs your approval: ${amountHbar} HBAR to ${recipient}`;
+    const reason = isSwap
+      ? `Needs your approval: swap ${metadata?.amountIn ?? "?"} ${metadata?.tokenIn ?? ""} → ${metadata?.tokenOut ?? ""}`
+      : `Needs your approval: ${amountHbar} HBAR to ${recipient}`;
+
     this.description = reason;
     logPolicyEvent(this.sessionId, {
       tool: method,
-      amountHbar,
+      amountHbar: isSwap ? undefined : amountHbar,
       recipient,
       decision: "approval_required",
       reason,
     });
 
-    // Store approval id on policy instance for API layer to read
     lastApprovalIdBySession.set(this.sessionId, approval.id);
     return true;
   }
@@ -90,4 +109,28 @@ function extractRecipient(params: unknown): string | undefined {
     return t.accountId;
   }
   return undefined;
+}
+
+function extractSwapMetadata(params: unknown): SwapApprovalMetadata | undefined {
+  if (!params || typeof params !== "object") return undefined;
+  const p = params as Record<string, unknown>;
+  const fromToken = typeof p.fromToken === "string" ? p.fromToken : undefined;
+  const toToken = typeof p.toToken === "string" ? p.toToken : undefined;
+  const amount =
+    typeof p.amount === "string"
+      ? p.amount
+      : typeof p.amount === "number"
+        ? String(p.amount)
+        : undefined;
+  if (!fromToken || !toToken || !amount) return undefined;
+
+  const slippage =
+    typeof p.slippageTolerance === "number" ? p.slippageTolerance : 0.5;
+
+  return {
+    tokenIn: fromToken,
+    tokenOut: toToken,
+    amountIn: amount,
+    maxSlippagePct: slippage,
+  };
 }

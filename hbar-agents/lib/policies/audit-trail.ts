@@ -1,9 +1,9 @@
 import { HcsAuditTrailHook } from "@hashgraph/hedera-agent-kit/hooks";
 import { getHbarClient } from "../hedera-client";
-import { PAYMENT_TOOLS } from "../policy-state";
+import { POLICY_GUARDED_TOOLS } from "../policy-state";
 
 export function createAuditTrailHook(topicId: string): HcsAuditTrailHook {
-  return new HcsAuditTrailHook([...PAYMENT_TOOLS], topicId, getHbarClient());
+  return new HcsAuditTrailHook([...POLICY_GUARDED_TOOLS], topicId, getHbarClient());
 }
 
 export async function logPolicyDecisionToHcs(

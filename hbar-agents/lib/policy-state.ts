@@ -2,6 +2,7 @@ export type PolicyDecision =
   | "allowed"
   | "blocked_spend_limit"
   | "blocked_counterparty"
+  | "blocked_slippage"
   | "approval_required"
   | "rejected";
 
@@ -33,6 +34,17 @@ export interface SessionSpendState {
   dayStartedAt: number;
 }
 
+export interface SwapApprovalMetadata {
+  tokenIn: string;
+  tokenOut: string;
+  amountIn: string;
+  expectedAmountOut?: string;
+  minAmountOut?: string | null;
+  priceImpact?: number | null;
+  maxSlippagePct: number;
+  route?: string[];
+}
+
 export interface PendingApproval {
   id: string;
   sessionId: string;
@@ -42,6 +54,7 @@ export interface PendingApproval {
   taskType: string;
   createdAt: number;
   status: "pending" | "approved" | "rejected";
+  metadata?: SwapApprovalMetadata;
 }
 
 export interface PolicyEvent {
@@ -100,7 +113,15 @@ export function resolveApproval(id: string, approved: boolean): PendingApproval 
   approval.status = approved ? "approved" : "rejected";
   pendingApprovals.set(id, approval);
   if (approved) {
-    grantedApprovals.add(approvalKey(approval.sessionId, approval.tool, approval.recipient, approval.amountHbar));
+    grantedApprovals.add(
+      buildApprovalKey({
+        sessionId: approval.sessionId,
+        tool: approval.tool,
+        recipient: approval.recipient,
+        amountHbar: approval.amountHbar,
+        metadata: approval.metadata,
+      })
+    );
   }
   return approval;
 }
@@ -109,18 +130,30 @@ export function isApprovalGranted(
   sessionId: string,
   tool: string,
   recipient: string,
-  amountHbar: number
+  amountHbar: number,
+  metadata?: SwapApprovalMetadata
 ): boolean {
-  return grantedApprovals.has(approvalKey(sessionId, tool, recipient, amountHbar));
+  return grantedApprovals.has(
+    buildApprovalKey({ sessionId, tool, recipient, amountHbar, metadata })
+  );
 }
 
-function approvalKey(
-  sessionId: string,
-  tool: string,
-  recipient: string,
-  amountHbar: number
-): string {
-  return `${sessionId}:${tool}:${recipient}:${amountHbar}`;
+export function buildApprovalKey(input: {
+  sessionId: string;
+  tool: string;
+  recipient: string;
+  amountHbar: number;
+  metadata?: SwapApprovalMetadata;
+}): string {
+  if (isWriteTool(input.tool) && input.metadata) {
+    const m = input.metadata;
+    return `${input.sessionId}:${input.tool}:${m.tokenIn}:${m.tokenOut}:${m.amountIn}:${m.maxSlippagePct}`;
+  }
+  return `${input.sessionId}:${input.tool}:${input.recipient}:${input.amountHbar}`;
+}
+
+export function getApprovalKind(tool: string): "payment" | "swap" {
+  return isWriteTool(tool) ? "swap" : "payment";
 }
 
 export function logPolicyEvent(sessionId: string, event: Omit<PolicyEvent, "timestamp" | "sessionId">): PolicyEvent {
@@ -150,8 +183,17 @@ export const PAYMENT_TOOLS = [
   "transfer_hbar_with_allowance_tool",
 ] as const;
 
+export const WRITE_TOOLS = ["saucerswap_swap_tokens"] as const;
+
 export type PaymentTool = (typeof PAYMENT_TOOLS)[number];
+export type WriteTool = (typeof WRITE_TOOLS)[number];
 
 export function isPaymentTool(method: string): boolean {
   return (PAYMENT_TOOLS as readonly string[]).includes(method);
 }
+
+export function isWriteTool(method: string): boolean {
+  return (WRITE_TOOLS as readonly string[]).includes(method);
+}
+
+export const POLICY_GUARDED_TOOLS = [...PAYMENT_TOOLS, ...WRITE_TOOLS] as const;

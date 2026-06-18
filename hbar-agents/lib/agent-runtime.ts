@@ -9,6 +9,7 @@ import {
   SpendLimitPolicy,
   AllowedCounterpartyPolicy,
   ContextualApprovalPolicy,
+  SlippagePolicy,
   createAuditTrailHook,
 } from "./policies";
 import type {
@@ -68,12 +69,22 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
     config.approval,
     config.taskType ?? "read"
   );
+  const slippagePolicy =
+    (config.agentId ?? "stub") === "swap-executor"
+      ? new SlippagePolicy(config.sessionId)
+      : null;
 
   const context: Context & { sessionId?: string } = {
     mode: AgentMode.AUTONOMOUS,
     accountId: process.env.HEDERA_OPERATOR_ID,
     sessionId: config.sessionId,
-    hooks: [spendPolicy, counterpartyPolicy, approvalPolicy, ...hooks],
+    hooks: [
+      spendPolicy,
+      counterpartyPolicy,
+      approvalPolicy,
+      ...(slippagePolicy ? [slippagePolicy] : []),
+      ...hooks,
+    ],
   };
 
   const agentId = config.agentId ?? "stub";
