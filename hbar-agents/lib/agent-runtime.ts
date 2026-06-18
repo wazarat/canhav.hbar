@@ -21,6 +21,7 @@ import {
   buildSystemPrompt,
   buildStubSystemPrompt,
   buildYieldScoutSystemPrompt,
+  buildSwapExecutorSystemPrompt,
   type HbarAgentId,
 } from "./agent-config";
 import { bindSessionCounterparty } from "./runtime-session";
@@ -32,6 +33,7 @@ export {
   buildSystemPrompt,
   buildStubSystemPrompt,
   buildYieldScoutSystemPrompt,
+  buildSwapExecutorSystemPrompt,
   type HbarAgentId,
 } from "./agent-config";
 

@@ -97,3 +97,12 @@ export function getYieldScoutWorkerId(): string {
     "0.0.0"
   );
 }
+
+export function getSwapExecutorWorkerId(): string {
+  return (
+    process.env.HBAR_SWAP_EXECUTOR_WORKER_ID ||
+    process.env.HBAR_STUB_WORKER_ID ||
+    process.env.HEDERA_OPERATOR_ID ||
+    "0.0.0"
+  );
+}
