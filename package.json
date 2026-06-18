@@ -40,6 +40,7 @@
     "drizzle-orm": "^0.45.1",
     "ethers": "^6.16.0",
     "hak-pyth-plugin": "^0.2.1",
+    "hak-saucerswap-plugin": "^2.1.1",
     "hedera-agent-kit": "^3.0.0",
     "lucide-react": "^0.577.0",
     "magic-sdk": "^33.6.1",

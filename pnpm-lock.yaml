@@ -80,6 +80,9 @@ importers:
       hak-pyth-plugin:
         specifier: ^0.2.1
         version: 0.2.1(@hashgraph/hedera-agent-kit@4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))))(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))(debug@4.4.1)
+      hak-saucerswap-plugin:
+        specifier: ^2.1.1
+        version: 2.1.1(@hashgraph/hedera-agent-kit@4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))))(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))(debug@4.4.1)
       hedera-agent-kit:
         specifier: ^3.0.0
         version: 3.8.2(@cfworker/json-schema@4.1.1)(@langchain/langgraph@1.4.4(@langchain/core@1.1.24(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76)))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(zod-to-json-schema@3.24.6(zod@3.25.76))(zod@3.25.76))(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76))(react-dom@18.3.1(react@18.3.1))(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))(react@18.3.1)
@@ -3639,6 +3642,12 @@ packages:
 
   hak-pyth-plugin@0.2.1:
     resolution: {integrity: sha512-4i06LNYnlNvWfnwlD/9zDYCSRD/Jdr50O/LWYrt7nCcXe/8LVnotQVoEs1OK/Q8Lgqqo45ENMDf9qsCyK5kcBg==}
+    peerDependencies:
+      '@hashgraph/hedera-agent-kit': ^4.0.0
+      '@hiero-ledger/sdk': ^2.84.0
+
+  hak-saucerswap-plugin@2.1.1:
+    resolution: {integrity: sha512-y9cCpiu3773SUhP92Q2ucdGTvpH8Rwe/nv8lQrKyqUkMDyJo5x+iO20QNgQOHWag1JoZ6CMt7Zku82VMUUGqjQ==}
     peerDependencies:
       '@hashgraph/hedera-agent-kit': ^4.0.0
       '@hiero-ledger/sdk': ^2.84.0
@@ -9687,6 +9696,16 @@ snapshots:
   graphql@16.13.1: {}
 
   hak-pyth-plugin@0.2.1(@hashgraph/hedera-agent-kit@4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))))(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))(debug@4.4.1):
+    dependencies:
+      '@hashgraph/hedera-agent-kit': 4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))
+      '@hiero-ledger/sdk': 2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))
+      axios: 1.18.0(debug@4.4.1)
+      zod: 3.25.76
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  hak-saucerswap-plugin@2.1.1(@hashgraph/hedera-agent-kit@4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))))(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))(debug@4.4.1):
     dependencies:
       '@hashgraph/hedera-agent-kit': 4.0.0(@hiero-ledger/sdk@2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1)))
       '@hiero-ledger/sdk': 2.85.0(react-native@0.84.1(@babel/core@7.29.0)(@types/react@18.3.28)(react@18.3.1))
