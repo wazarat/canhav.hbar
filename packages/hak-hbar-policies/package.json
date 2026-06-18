@@ -1,0 +1,37 @@
+{
+  "name": "hak-hbar-policies",
+  "version": "0.1.0",
+  "description": "Policy-gated hooks for Hedera Agent Kit — spend limits, counterparty allowlists, contextual approval, and slippage bounds",
+  "private": false,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wazarat/canhav.hbar.git",
+    "directory": "packages/hak-hbar-policies"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@hashgraph/hedera-agent-kit": "^4.0.0",
+    "@hashgraph/sdk": "^2.0.0"
+  },
+  "devDependencies": {
+    "@hashgraph/hedera-agent-kit": "^4.0.0",
+    "@hashgraph/sdk": "^2.81.0",
+    "typescript": "^5"
+  }
+}
