@@ -13,7 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "hvar:create-audit-topic": "dotenv -e .env.local -- tsx hvar-agents/scripts/create-audit-topic.ts"
+    "hbar:create-audit-topic": "dotenv -e .env.local -- tsx hbar-agents/scripts/create-audit-topic.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.0",
