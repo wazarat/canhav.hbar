@@ -12,13 +12,16 @@ import { swapExecutorAgentConfig } from "../agents/swap-executor/config";
 import { lpHealthAgentConfig } from "../agents/lp-health/config";
 import { priceFeedVerifierAgentConfig } from "../agents/price-feed-verifier/config";
 import type { BudgetConfig } from "./policy-state";
+import type { CustomAgentSpec } from "./custom-agent";
+import { dataSourceLabels } from "./custom-agent";
 
 export type HbarAgentId =
   | "stub"
   | "yield-scout"
   | "swap-executor"
   | "lp-health"
-  | "price-feed-verifier";
+  | "price-feed-verifier"
+  | "custom";
 
 export interface AgentConfigBundle {
   id: HbarAgentId;
@@ -33,6 +36,7 @@ const TASK_PRICES: Record<HbarAgentId, number> = {
   "swap-executor": 1,
   "lp-health": 1,
   "price-feed-verifier": 1,
+  custom: 1,
 };
 
 export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
@@ -45,7 +49,9 @@ export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
           ? lpHealthAgentConfig
           : agentId === "price-feed-verifier"
             ? priceFeedVerifierAgentConfig
-            : stubAgentConfig;
+            : agentId === "custom"
+              ? { id: "custom" as const, name: "Custom Agent", taskType: "read" }
+              : stubAgentConfig;
   return {
     id: agentId,
     name: config.name,
@@ -74,7 +80,8 @@ export function getPluginsForAgent(
 
 export function buildSystemPrompt(
   agentId: HbarAgentId,
-  budget: BudgetConfig
+  budget: BudgetConfig,
+  customSpec?: CustomAgentSpec
 ): string {
   if (agentId === "yield-scout") {
     return buildYieldScoutSystemPrompt(budget);
@@ -87,6 +94,9 @@ export function buildSystemPrompt(
   }
   if (agentId === "price-feed-verifier") {
     return buildPriceFeedVerifierSystemPrompt(budget);
+  }
+  if (agentId === "custom" && customSpec) {
+    return buildCustomSystemPrompt(customSpec, budget);
   }
   return buildStubSystemPrompt(budget);
 }
@@ -241,4 +251,54 @@ Policy constraints (enforced on payment only):
 - Daily budget: ${budget.dailyBudgetHbar} HBAR
 
 Never use mainnet. Never execute swaps.`;
+}
+
+export function buildCustomSystemPrompt(
+  spec: CustomAgentSpec,
+  budget: BudgetConfig
+): string {
+  const tools = dataSourceLabels(spec.dataSources);
+  const writeRules =
+    spec.taskType === "write"
+      ? `
+Write agent rules (MANDATORY):
+- Fetch a fresh saucerswap_get_swap_quote before any swap intent
+- Reject stale quotes or quotes exceeding max slippage (${spec.maxSlippagePct ?? 0.5}%)
+- Call hbar_stub_pay for the task fee (requires human approval)
+- Call saucerswap_swap_tokens ONLY after payment approval and swap approval
+- Never swap without a fresh quote`
+      : `
+Read-only rules (MANDATORY):
+- NEVER call saucerswap_swap_tokens or any write/deposit/borrow tool
+- Analysis and quotes only`;
+
+  return `You are "${spec.name}", a user-defined HBAR Skills agent on Hedera testnet.
+
+User objective:
+${spec.objective}
+
+Enabled data sources and tools ONLY:
+${tools.map((t) => `- ${t}`).join("\n")}
+- hbar_stub_pay (task payment, policy-gated)
+
+FORBIDDEN: Do not call any tool not listed above.
+
+Task type: ${spec.taskType}
+${writeRules}
+
+Policy envelope (enforced automatically):
+- Per-task cap: ${budget.perTaskCapHbar} HBAR
+- Daily budget: ${budget.dailyBudgetHbar} HBAR
+- Auto-approve payments below: ${spec.approval.autoApproveBelowHbar} HBAR
+${spec.taskType === "write" ? "- Write tasks ALWAYS require human approval for payment AND swap" : ""}
+
+After completing the task, call hbar_stub_pay with amountHbar=1 unless payment was already made.
+Return ONLY valid JSON (no markdown) with at minimum:
+{
+  "summary": "one-line result",
+  "completedAt": "<ISO8601>",
+  ...additional structured fields relevant to the objective...
+}
+
+Never use mainnet.`;
 }

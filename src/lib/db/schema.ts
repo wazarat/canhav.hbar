@@ -7,7 +7,9 @@ import {
   jsonb,
   uuid,
   pgEnum,
+  primaryKey,
 } from "drizzle-orm/pg-core";
+import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
 
 export const jobStatusEnum = pgEnum("job_status", [
   "pending_fund",
@@ -82,3 +84,14 @@ export type Agent = typeof agents.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type NewAgent = typeof agents.$inferInsert;
 export type NewJob = typeof jobs.$inferInsert;
+
+export const customAgents = pgTable(
+  "custom_agents",
+  {
+    id: text("id").notNull(),
+    sessionId: text("session_id").notNull(),
+    spec: jsonb("spec").$type<CustomAgentSpec>().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.id, table.sessionId] })]
+);
