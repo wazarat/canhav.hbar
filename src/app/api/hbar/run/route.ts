@@ -13,11 +13,13 @@ import { executeYieldScoutRun } from "@hbar/lib/execute-yield-scout-run";
 import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
 import { executeLpHealthRun } from "@hbar/lib/execute-lp-health-run";
 import { executePriceFeedVerifierRun } from "@hbar/lib/execute-price-feed-verifier-run";
+import { executeCustomRun } from "@hbar/lib/execute-custom-run";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
 import type { LpHealthIntake } from "@hbar/agents/lp-health/types";
 import type { PriceVerifierIntake } from "@hbar/agents/price-feed-verifier/types";
+import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
 
 function hashScanTopicUrl() {
   const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
@@ -42,6 +44,10 @@ export async function POST(req: NextRequest) {
     intake,
     quoteOnly,
     swapApproved,
+    previewOnly,
+    spec,
+    userMessage,
+    swapIntake,
   } = body as {
     messages?: CoreMessage[];
     goal?: string;
@@ -56,6 +62,10 @@ export async function POST(req: NextRequest) {
     intake?: SwapExecutorIntake | LpHealthIntake | PriceVerifierIntake;
     quoteOnly?: boolean;
     swapApproved?: boolean;
+    previewOnly?: boolean;
+    spec?: CustomAgentSpec;
+    userMessage?: string;
+    swapIntake?: SwapExecutorIntake;
   };
 
   if (agentId === "yield-scout") {
@@ -176,6 +186,39 @@ export async function POST(req: NextRequest) {
       amountHbar,
       skipPayment,
       paymentTxId,
+    });
+
+    return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });
+  }
+
+  if (agentId === "custom") {
+    if (!process.env.OPENAI_API_KEY) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!spec?.name || !spec?.objective) {
+      return NextResponse.json(
+        { error: "spec with name and objective required for custom agent" },
+        { status: 400 }
+      );
+    }
+
+    const result = await executeCustomRun({
+      sessionId,
+      spec,
+      userMessage: userMessage ?? spec.objective,
+      budget,
+      approval,
+      amountHbar,
+      skipPayment,
+      paymentTxId,
+      swapApproved,
+      quoteOnly,
+      previewOnly,
+      swapIntake,
     });
 
     return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });

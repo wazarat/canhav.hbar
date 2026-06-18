@@ -47,6 +47,7 @@ export interface HbarRuntimeConfig {
   taskType?: string;
   agentId?: HbarAgentId;
   extraPlugins?: Plugin[];
+  pluginsOverride?: Plugin[];
 }
 
 export interface BuiltRuntime {
@@ -70,7 +71,7 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
     config.taskType ?? "read"
   );
   const slippagePolicy =
-    (config.agentId ?? "stub") === "swap-executor"
+    (config.taskType ?? "read") === "write"
       ? new SlippagePolicy(config.sessionId)
       : null;
 
@@ -88,13 +89,18 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
   };
 
   const agentId = config.agentId ?? "stub";
-  if (agentId === "swap-executor" || agentId === "price-feed-verifier") {
+  if (
+    agentId === "swap-executor" ||
+    agentId === "price-feed-verifier" ||
+    agentId === "custom"
+  ) {
     applySaucerSwapContextConfig(context);
   }
 
   bindSessionCounterparty(config.sessionId, config.counterparty);
 
-  const plugins: Plugin[] = getPluginsForAgent(agentId, config.extraPlugins);
+  const plugins: Plugin[] =
+    config.pluginsOverride ?? getPluginsForAgent(agentId, config.extraPlugins);
 
   const client = getHbarClient();
   const toolkit = new HederaAIToolkit({

@@ -31,6 +31,7 @@ import {
   PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
   getPriceFeedVerifierCounterpartyConfig,
 } from "@hbar/agents/price-feed-verifier/config";
+import { CUSTOM_TASK_PRICE_HBAR } from "@hbar/lib/custom-agent";
 import type { HbarAgentId } from "./agent-config";
 import { getAgentConfig } from "./agent-config";
 import { buildStubTaskResult, buildYieldScoutTaskResult } from "./x402/facilitator";
@@ -41,6 +42,7 @@ export interface PayRequest {
   approval: ApprovalConfig;
   amountHbar?: number;
   agentId?: HbarAgentId;
+  taskType?: string;
 }
 
 export type PayResponse =
@@ -88,6 +90,20 @@ function resolveAgent(agentId?: HbarAgentId) {
       defaultPrice: PRICE_FEED_VERIFIER_TASK_PRICE_HBAR,
     };
   }
+  if (id === "custom") {
+    return {
+      agentId: "custom" as HbarAgentId,
+      config: {
+        id: "custom" as const,
+        name: "Custom Agent",
+        taskType: "read" as const,
+        defaultBudget: yieldScoutAgentConfig.defaultBudget,
+        defaultApproval: yieldScoutAgentConfig.defaultApproval,
+      },
+      counterparty: getYieldScoutCounterpartyConfig(),
+      defaultPrice: CUSTOM_TASK_PRICE_HBAR,
+    };
+  }
   return {
     agentId: "stub" as HbarAgentId,
     config: stubAgentConfig,
@@ -122,13 +138,14 @@ export async function executeAgentPayment(req: PayRequest): Promise<PayResponse>
     req.agentId
   );
   const amountHbar = req.amountHbar ?? defaultPrice;
+  const taskType = req.taskType ?? config.taskType;
 
   const { spendPolicy, context } = buildHbarRuntime({
     sessionId: req.sessionId,
     budget: req.budget,
     approval: req.approval,
     counterparty,
-    taskType: config.taskType,
+    taskType,
     agentId,
   });
 
@@ -155,8 +172,10 @@ export async function executeAgentPayment(req: PayRequest): Promise<PayResponse>
             ? "swap-executor task purchase"
             : agentId === "lp-health"
               ? "lp-health task purchase"
-              : agentId === "price-feed-verifier"
-                ? "price-feed-verifier task purchase"
+            : agentId === "price-feed-verifier"
+              ? "price-feed-verifier task purchase"
+              : agentId === "custom"
+                ? "custom agent task purchase"
                 : "stub task",
     });
 

@@ -8,6 +8,7 @@ import {
 } from "@hbar/lib/policy-state";
 import { executeAgentPayment } from "@hbar/lib/execute-agent-payment";
 import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
+import { executeCustomRun } from "@hbar/lib/execute-custom-run";
 import { stubAgentConfig } from "@hbar/agents/stub/config";
 import { yieldScoutAgentConfig } from "@hbar/agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "@hbar/agents/swap-executor/config";
@@ -16,6 +17,7 @@ import { priceFeedVerifierAgentConfig } from "@hbar/agents/price-feed-verifier/c
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
 import type { SwapExecutorIntake } from "@hbar/agents/swap-executor/types";
+import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
 
 function resolveDefaults(agentId: HbarAgentId) {
   if (agentId === "yield-scout") return yieldScoutAgentConfig;
@@ -37,6 +39,9 @@ export async function POST(req: NextRequest) {
     intake,
     paymentTxId,
     skipPayment,
+    spec,
+    userMessage,
+    swapIntake,
   } = body as {
     approvalId: string;
     approved: boolean;
@@ -47,6 +52,9 @@ export async function POST(req: NextRequest) {
     intake?: SwapExecutorIntake;
     paymentTxId?: string;
     skipPayment?: boolean;
+    spec?: CustomAgentSpec;
+    userMessage?: string;
+    swapIntake?: SwapExecutorIntake;
   };
 
   if (!approvalId || !sessionId) {
@@ -133,6 +141,67 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ ...runResult, hashScanTopicUrl });
+  }
+
+  if (agentId === "custom" && spec && isWriteTool(pending.tool)) {
+    const swap = swapIntake ?? intake;
+    if (!swap?.tokenIn || !swap?.tokenOut || !swap?.amountIn) {
+      return NextResponse.json(
+        { error: "swapIntake required to resume custom swap execution" },
+        { status: 400 }
+      );
+    }
+
+    const runResult = await executeCustomRun({
+      sessionId,
+      spec,
+      userMessage: userMessage ?? spec.objective,
+      budget: budget ?? spec.budget,
+      approval: approval ?? spec.approval,
+      skipPayment: true,
+      paymentTxId,
+      swapApproved: true,
+      swapIntake: swap,
+    });
+
+    return NextResponse.json({ ...runResult, hashScanTopicUrl });
+  }
+
+  if (agentId === "custom" && spec && isPaymentTool(pending.tool)) {
+    const payResult = await executeAgentPayment({
+      sessionId,
+      budget: budget ?? spec.budget,
+      approval: approval ?? spec.approval,
+      amountHbar: pending.amountHbar,
+      agentId: "custom",
+      taskType: spec.taskType,
+    });
+
+    if (payResult.status !== "success") {
+      return NextResponse.json({ ...payResult, hashScanTopicUrl });
+    }
+
+    const swap = swapIntake ?? intake;
+    const runResult = await executeCustomRun({
+      sessionId,
+      spec,
+      userMessage: userMessage ?? spec.objective,
+      budget: budget ?? spec.budget,
+      approval: approval ?? spec.approval,
+      skipPayment: true,
+      paymentTxId: payResult.txId ?? paymentTxId,
+      swapIntake: swap,
+    });
+
+    return NextResponse.json({ ...runResult, hashScanTopicUrl });
+  }
+
+  if (agentId === "custom" && spec && skipPayment) {
+    return NextResponse.json({
+      status: "approved",
+      policyState: "within policy",
+      hashScanTopicUrl,
+    });
   }
 
   if (agentId === "yield-scout" && skipPayment) {
