@@ -10,13 +10,9 @@ import {
   AllowedCounterpartyPolicy,
   ContextualApprovalPolicy,
   SlippagePolicy,
-  createAuditTrailHook,
 } from "./policies";
-import type {
-  BudgetConfig,
-  ApprovalConfig,
-  CounterpartyConfig,
-} from "./policy-state";
+import { createAuditTrailHookForOperator } from "./policies/audit-trail";
+import { getPolicyStateStore } from "./policy-state";
 import {
   getPluginsForAgent,
   buildSystemPrompt,
@@ -25,6 +21,11 @@ import {
   buildSwapExecutorSystemPrompt,
   type HbarAgentId,
 } from "./agent-config";
+import type {
+  BudgetConfig,
+  ApprovalConfig,
+  CounterpartyConfig,
+} from "./policy-state";
 import { bindSessionCounterparty } from "./runtime-session";
 import { applySaucerSwapContextConfig } from "./plugins/saucerswap";
 
@@ -58,21 +59,30 @@ export interface BuiltRuntime {
 
 export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
   const auditTopicId = process.env.HBAR_AUDIT_TOPIC_ID;
-  const hooks = auditTopicId ? [createAuditTrailHook(auditTopicId)] : [];
+  const hooks = auditTopicId
+    ? [createAuditTrailHookForOperator(auditTopicId)]
+    : [];
+  const store = getPolicyStateStore();
 
-  const spendPolicy = new SpendLimitPolicy(config.sessionId, config.budget);
+  const spendPolicy = new SpendLimitPolicy(
+    store,
+    config.sessionId,
+    config.budget
+  );
   const counterpartyPolicy = new AllowedCounterpartyPolicy(
+    store,
     config.sessionId,
     config.counterparty
   );
   const approvalPolicy = new ContextualApprovalPolicy(
+    store,
     config.sessionId,
     config.approval,
     config.taskType ?? "read"
   );
   const slippagePolicy =
     (config.taskType ?? "read") === "write"
-      ? new SlippagePolicy(config.sessionId)
+      ? new SlippagePolicy(store, config.sessionId)
       : null;
 
   const context: Context & { sessionId?: string } = {
