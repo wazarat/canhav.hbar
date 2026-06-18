@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -46,8 +46,10 @@ import type {
   PriceVerifierIntake,
   PriceVerifierReport,
 } from "@hbar/agents/price-feed-verifier/types";
+import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
+import { CUSTOM_TASK_PRICE_HBAR } from "@hbar/lib/custom-agent";
 import { hbarSkillsUi, POLICY_BADGE } from "@hbar/lib/ui-tokens";
-import { ArrowRightLeft, ExternalLink, HeartPulse, Loader2, Shield, TrendingUp, Scale } from "lucide-react";
+import { ArrowRightLeft, ExternalLink, HeartPulse, Loader2, Shield, Sparkles, TrendingUp, Scale } from "lucide-react";
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "ssr";
@@ -318,8 +320,59 @@ export default function HbarAgentPage({
   params: { agent: string };
 }) {
   const agentMeta = AGENT_CATALOG.find((a) => a.id === params.agent);
-  if (!agentMeta) notFound();
 
+  if (agentMeta) {
+    return <BuiltInAgentRouter agentMeta={agentMeta} />;
+  }
+
+  return <CustomAgentLoader agentId={params.agent} />;
+}
+
+function CustomAgentLoader({ agentId }: { agentId: string }) {
+  const [spec, setSpec] = useState<CustomAgentSpec | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFoundState, setNotFoundState] = useState(false);
+
+  useEffect(() => {
+    const sessionId = getSessionId();
+    fetch(`/api/hbar/custom-agents/${agentId}`, {
+      headers: { "x-session-id": sessionId },
+    })
+      .then(async (r) => {
+        if (!r.ok) {
+          setNotFoundState(true);
+          return null;
+        }
+        return r.json() as Promise<{ spec?: CustomAgentSpec }>;
+      })
+      .then((data) => {
+        if (data?.spec) setSpec(data.spec);
+        else setNotFoundState(true);
+      })
+      .catch(() => setNotFoundState(true))
+      .finally(() => setLoading(false));
+  }, [agentId]);
+
+  if (loading) {
+    return (
+      <main className={hbarSkillsUi.page}>
+        <div className="mx-auto max-w-lg px-4 py-12 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-400" />
+        </div>
+      </main>
+    );
+  }
+
+  if (notFoundState || !spec) notFound();
+
+  return <CustomSavedAgentRunner spec={spec} />;
+}
+
+function BuiltInAgentRouter({
+  agentMeta,
+}: {
+  agentMeta: (typeof AGENT_CATALOG)[number];
+}) {
   if (agentMeta.status !== "active") {
     return (
       <main className={hbarSkillsUi.page}>
@@ -353,6 +406,170 @@ export default function HbarAgentPage({
   }
 
   return <StubAgentRunner name={agentMeta.name} />;
+}
+
+function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
+  const sessionId = useMemo(() => getSessionId(), []);
+  const [policyState, setPolicyState] = useState("within policy");
+  const [loading, setLoading] = useState(false);
+  const [runResult, setRunResult] = useState<PayResult | null>(null);
+  const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+  const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+
+  const runAgent = useCallback(async () => {
+    setLoading(true);
+    setRunResult(null);
+    try {
+      const res = await fetch("/api/hbar/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": sessionId,
+        },
+        body: JSON.stringify({
+          agentId: "custom",
+          sessionId,
+          spec,
+          userMessage: spec.objective,
+          budget: spec.budget,
+          approval: spec.approval,
+          amountHbar: CUSTOM_TASK_PRICE_HBAR,
+          stream: false,
+        }),
+      });
+      const data = (await res.json()) as PayResult & { result?: Record<string, unknown> };
+      setPolicyState(data.policyState ?? "within policy");
+      setRunResult(data);
+      if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
+      if (data.status === "pending_approval") {
+        setPendingApproval(data);
+        setApprovalOpen(true);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, spec]);
+
+  const handleApprove = async (approved: boolean) => {
+    if (!pendingApproval?.approvalId) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hbar/approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          approvalId: pendingApproval.approvalId,
+          approved,
+          sessionId,
+          budget: spec.budget,
+          approval: spec.approval,
+          agentId: "custom",
+          spec,
+          userMessage: spec.objective,
+          paymentTxId,
+        }),
+      });
+      const data = (await res.json()) as PayResult & { result?: Record<string, unknown> };
+      setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
+      setRunResult(data);
+      setApprovalOpen(false);
+      setPendingApproval(null);
+      if (approved && data.txId) setPaymentTxId(data.txId);
+      if (approved && data.status === "approved") {
+        const rerun = await fetch("/api/hbar/run", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-session-id": sessionId,
+          },
+          body: JSON.stringify({
+            agentId: "custom",
+            sessionId,
+            spec,
+            userMessage: spec.objective,
+            skipPayment: true,
+            paymentTxId: data.txId,
+            stream: false,
+          }),
+        });
+        const rerunData = (await rerun.json()) as PayResult;
+        setRunResult(rerunData);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className={hbarSkillsUi.page}>
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Link href="/hbar" className={`text-sm ${hbarSkillsUi.text.secondary} hover:text-zinc-200`}>
+          ← All HBAR Skills agents
+        </Link>
+        <div className="mt-4 flex items-center gap-3">
+          <Sparkles className="h-8 w-8 text-indigo-400" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{spec.name}</h1>
+              <span className="rounded-full bg-indigo-600/80 px-2 py-0.5 text-xs text-white">
+                Custom
+              </span>
+            </div>
+            <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
+              {spec.taskType} · {CUSTOM_TASK_PRICE_HBAR} HBAR per run
+            </p>
+          </div>
+        </div>
+
+        <Card className={`mt-8 ${hbarSkillsUi.surface}`}>
+          <CardContent className="pt-6">
+            <p className={`text-sm ${hbarSkillsUi.text.primary}`}>{spec.objective}</p>
+            <p className={`mt-2 text-xs ${hbarSkillsUi.text.muted}`}>
+              Sources: {spec.dataSources.join(", ")} · Cap {spec.budget.perTaskCapHbar} HBAR/task
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="mt-6">
+          <PolicyBadge policyState={policyState} />
+        </div>
+
+        <div className="mt-6">
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={runAgent}
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Run saved agent
+          </Button>
+        </div>
+
+        {runResult?.result != null && (
+          <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
+            <CardContent className="pt-6">
+              <pre className="overflow-x-auto text-xs text-zinc-300">
+                {JSON.stringify(runResult.result, null, 2)}
+              </pre>
+            </CardContent>
+          </Card>
+        )}
+
+        <HashScanLinks txId={runResult?.txId} topicUrl={hashScanTopicUrl} />
+
+        <ApprovalModal
+          open={approvalOpen}
+          onOpenChange={setApprovalOpen}
+          pending={pendingApproval}
+          loading={loading}
+          onApprove={handleApprove}
+          taskLabel={`${spec.name} task purchase`}
+        />
+      </div>
+    </main>
+  );
 }
 
 function YieldScoutRunner({ name }: { name: string }) {

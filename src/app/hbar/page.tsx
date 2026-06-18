@@ -1,10 +1,57 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENT_CATALOG } from "@hbar/lib/agent-catalog";
+import { AGENT_CATALOG, type MergedCatalogEntry } from "@hbar/lib/agent-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hbarSkillsUi } from "@hbar/lib/ui-tokens";
+import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
+import { Sparkles } from "lucide-react";
+
+function getSessionId(): string {
+  if (typeof window === "undefined") return "ssr";
+  let id = sessionStorage.getItem("hbar-session");
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem("hbar-session", id);
+  }
+  return id;
+}
 
 export default function HbarAgentsPage() {
+  const [customAgents, setCustomAgents] = useState<CustomAgentSpec[]>([]);
+
+  useEffect(() => {
+    const sessionId = getSessionId();
+    fetch("/api/hbar/custom-agents", {
+      headers: { "x-session-id": sessionId },
+    })
+      .then((r) => (r.ok ? r.json() : { agents: [] }))
+      .then((data: { agents?: CustomAgentSpec[] }) =>
+        setCustomAgents(data.agents ?? [])
+      )
+      .catch(() => setCustomAgents([]));
+  }, []);
+
+  const mergedCatalog: MergedCatalogEntry[] = [
+    ...AGENT_CATALOG.map((a) => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      status: a.status,
+      milestone: a.milestone,
+      isCustom: false,
+    })),
+    ...customAgents.map((spec) => ({
+      id: spec.id,
+      name: spec.name,
+      description: spec.objective.slice(0, 120) + (spec.objective.length > 120 ? "…" : ""),
+      status: "active" as const,
+      isCustom: true,
+    })),
+  ];
+
   return (
     <main className={hbarSkillsUi.page}>
       <div className="mx-auto max-w-4xl px-4 py-12">
@@ -19,8 +66,36 @@ export default function HbarAgentsPage() {
           </p>
         </div>
 
+        <Card
+          className={`mb-6 border-indigo-500/40 bg-gradient-to-br from-zinc-900 to-indigo-950/30 ${hbarSkillsUi.surface}`}
+        >
+          <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 h-6 w-6 shrink-0 text-indigo-400" />
+              <div>
+                <CardTitle className={`text-lg ${hbarSkillsUi.text.primary}`}>
+                  Agent Studio — Train Your Own
+                </CardTitle>
+                <p className={`mt-1 text-sm ${hbarSkillsUi.text.secondary}`}>
+                  Compose a custom read-or-write agent from Bonzo, Pyth, and SaucerSwap
+                  building blocks. Policy-gated, no code required.
+                </p>
+              </div>
+            </div>
+            <Badge className="shrink-0 bg-indigo-600/90 text-white">Headline</Badge>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/hbar/studio"
+              className={`text-sm font-medium ${hbarSkillsUi.link}`}
+            >
+              Open Agent Studio →
+            </Link>
+          </CardContent>
+        </Card>
+
         <div className="grid gap-4">
-          {AGENT_CATALOG.map((agent) => (
+          {mergedCatalog.map((agent) => (
             <Card key={agent.id} className={hbarSkillsUi.surface}>
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
                 <div>
@@ -31,18 +106,26 @@ export default function HbarAgentsPage() {
                     {agent.description}
                   </p>
                 </div>
-                {agent.status === "active" ? (
-                  <Badge className="shrink-0 bg-emerald-600/90 text-white">Active</Badge>
-                ) : (
-                  <Badge variant="secondary" className="shrink-0 border-zinc-600 bg-zinc-800 text-zinc-300">
-                    Coming soon · {agent.milestone}
-                  </Badge>
-                )}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  {agent.isCustom && (
+                    <Badge className="bg-indigo-600/80 text-white">Custom</Badge>
+                  )}
+                  {agent.status === "active" ? (
+                    <Badge className="bg-emerald-600/90 text-white">Active</Badge>
+                  ) : (
+                    <Badge
+                      variant="secondary"
+                      className="border-zinc-600 bg-zinc-800 text-zinc-300"
+                    >
+                      Coming soon · {agent.milestone}
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {agent.status === "active" ? (
                   <Link
-                    href={`/hbar/${agent.id}`}
+                    href={agent.isCustom ? `/hbar/studio?agent=${agent.id}` : `/hbar/${agent.id}`}
                     className={`text-sm font-medium ${hbarSkillsUi.link}`}
                   >
                     Run agent →

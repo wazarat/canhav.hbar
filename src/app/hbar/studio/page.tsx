@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -85,9 +86,13 @@ const DATA_SOURCES: { id: DataSourceId; label: string; description: string }[] =
   },
 ];
 
-export default function AgentStudioPage() {
+export function AgentStudioPage() {
+  const searchParams = useSearchParams();
+  const loadAgentId = searchParams.get("agent");
+
   const sessionId = useMemo(() => getSessionId(), []);
   const [step, setStep] = useState<Step>("build");
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
 
   const [name, setName] = useState("My Yield Watcher");
   const [objective, setObjective] = useState(
@@ -112,6 +117,28 @@ export default function AgentStudioPage() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RunResult | null>(null);
   const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (!loadAgentId) return;
+    fetch(`/api/hbar/custom-agents/${loadAgentId}`, {
+      headers: { "x-session-id": sessionId },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { spec?: CustomAgentSpec } | null) => {
+        if (!data?.spec) return;
+        const s = data.spec;
+        setName(s.name);
+        setObjective(s.objective);
+        setDataSources(s.dataSources);
+        setAllowWrite(s.allowWrite ?? false);
+        setPerTaskCap(s.budget.perTaskCapHbar);
+        setDailyBudget(s.budget.dailyBudgetHbar);
+        setAutoApproveBelow(s.approval.autoApproveBelowHbar);
+        if (s.maxSlippagePct != null) setMaxSlippagePct(s.maxSlippagePct);
+        setStep("run");
+      })
+      .catch(() => undefined);
+  }, [loadAgentId, sessionId]);
 
   const writeEnabled = allowWrite && dataSources.includes("saucerswap-quote");
   const taskType = writeEnabled ? "write" : "read";
@@ -198,6 +225,29 @@ export default function AgentStudioPage() {
     },
     [sessionId, spec, objective, swapIntake, writeEnabled]
   );
+
+  const handleSaveAgent = async () => {
+    setSaveStatus(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/hbar/custom-agents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-session-id": sessionId,
+        },
+        body: JSON.stringify({ spec }),
+      });
+      const data = (await res.json()) as { spec?: CustomAgentSpec; error?: string };
+      if (!res.ok) {
+        setSaveStatus(data.error ?? "Save failed");
+        return;
+      }
+      setSaveStatus(`Saved as "${data.spec?.id ?? spec.id}" — visible in catalog`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDryRun = async () => {
     setLoading(true);
@@ -544,6 +594,14 @@ export default function AgentStudioPage() {
                 Dry run (no payment)
               </Button>
               <Button
+                variant="outline"
+                className="border-zinc-600 bg-transparent text-zinc-300 hover:bg-zinc-800"
+                onClick={handleSaveAgent}
+                disabled={loading}
+              >
+                Save this agent
+              </Button>
+              <Button
                 className={hbarSkillsUi.accentButton}
                 onClick={() => setStep("run")}
               >
@@ -551,6 +609,12 @@ export default function AgentStudioPage() {
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
+
+            {saveStatus && (
+              <p className={`mt-3 text-sm ${saveStatus.includes("Saved") ? "text-emerald-400" : "text-red-400"}`}>
+                {saveStatus}
+              </p>
+            )}
 
             {previewResult?.result && (
               <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
@@ -649,7 +713,21 @@ export default function AgentStudioPage() {
                 ) : null}
                 Run agent ({CUSTOM_TASK_PRICE_HBAR} HBAR)
               </Button>
+              <Button
+                variant="outline"
+                className="border-zinc-600 bg-transparent text-zinc-300 hover:bg-zinc-800"
+                onClick={handleSaveAgent}
+                disabled={loading}
+              >
+                Save this agent
+              </Button>
             </div>
+
+            {saveStatus && (
+              <p className={`mt-3 text-sm ${saveStatus.includes("Saved") ? "text-emerald-400" : "text-red-400"}`}>
+                {saveStatus}
+              </p>
+            )}
 
             {runResult?.reason && runResult.status === "blocked" && (
               <p className="mt-4 text-sm text-red-400">{runResult.reason}</p>
@@ -765,5 +843,21 @@ export default function AgentStudioPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function AgentStudioPageWrapper() {
+  return (
+    <Suspense
+      fallback={
+        <main className={hbarSkillsUi.page}>
+          <div className="mx-auto max-w-3xl px-4 py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+          </div>
+        </main>
+      }
+    >
+      <AgentStudioPage />
+    </Suspense>
   );
 }

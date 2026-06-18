@@ -51,3 +51,12 @@ export const AGENT_CATALOG = [
 ] as const;
 
 export type AgentCatalogEntry = (typeof AGENT_CATALOG)[number];
+
+export type MergedCatalogEntry = {
+  id: string;
+  name: string;
+  description: string;
+  status: "active" | "coming_soon";
+  milestone?: string;
+  isCustom?: boolean;
+};
