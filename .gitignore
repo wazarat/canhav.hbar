@@ -40,3 +40,7 @@ contracts/lib/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# HVAR local dev log (never commit)
+.hvar-dev-plan.md
+.pnpm-store/
