@@ -6,17 +6,20 @@ Built on [CanHav.HBAR](https://github.com/wazarat/canhav.hbar) without modifying
 
 ## Branch
 
-All development on **`ai-agent-bounty`** / feature branches — never merge to `main` without owner approval.
+All development on **`ai-agent-bounty`** — never merge to `main` without owner approval.
 
 ## Architecture
 
 - **`lib/agent-runtime.ts`** — Vercel AI SDK + Hedera Agent Kit v4 toolkit wiring
 - **`lib/agent-config.ts`** — Per-agent plugin loader and system prompts
-- **`lib/policies/`** — SpendLimit, AllowedCounterparty, ContextualApproval + HCS audit hook
+- **`packages/hak-hbar-policies`** — Reusable policy hooks (workspace package)
+- **`lib/policies/index.ts`** — Thin re-export shim + app audit helpers
+- **`lib/policy-state.ts`** — Session store implementing `PolicyStatePort`
+- **`lib/policy-state-db.ts`** — Drizzle hydrate/persist for serverless (Vercel)
 - **`lib/registry-lookup.ts`** — ERC-8004 AgentRegistry + ReputationRegistry counterparty checks
 - **`lib/x402/`** — Pay-per-call task purchase (policy-gated)
 - **`lib/ui-tokens.ts`** — Shared enterprise UI tokens (M2+)
-- **`agents/`** — One folder per DeFi agent (stub, yield-scout, swap-executor)
+- **`agents/`** — One folder per DeFi agent + custom agent schema
 
 ## M1 acceptance
 
@@ -40,6 +43,20 @@ All development on **`ai-agent-bounty`** / feature branches — never merge to `
 4. Payment, swap, and policy decisions logged to HCS audit topic (HashScan links in UI)
 5. M1 stub and M2 Yield Scout flows unchanged
 
+## M4 acceptance (Agent Studio)
+
+1. `/hbar/studio` — build → preview → run custom agents with policy envelope
+2. Custom agents persisted per session (`custom_agents` table) and listed in catalog
+3. Read-only and write (SaucerSwap) modes with dual approval gate
+
+## M5 acceptance (Package + deploy)
+
+1. `packages/hak-hbar-policies` builds standalone and is consumed via `workspace:*`
+2. `PolicyStatePort` injected — package has no hard-coded in-memory store
+3. `/api/health` + boot-time env validation
+4. Serverless-safe policy state when `DATABASE_URL` is set
+5. `FEEDBACK.md` + README demo link
+
 ## Environment
 
 See root `.env.example` for `HEDERA_OPERATOR_*`, `HBAR_AUDIT_TOPIC_ID`, worker IDs, and `SAUCERSWAP_*` (M3).
@@ -50,6 +67,12 @@ Create audit topic:
 pnpm hbar:create-audit-topic
 ```
 
+Push DB schema (policy session state + custom agents):
+
+```bash
+pnpm db:push
+```
+
 ## Dependencies
 
 **M1:** `@hashgraph/hedera-agent-kit` v4, `@hashgraph/hedera-agent-kit-ai-sdk`, `@hiero-ledger/sdk`, `ai`, `@ai-sdk/openai`
@@ -57,6 +80,8 @@ pnpm hbar:create-audit-topic
 **M2:** `@bonzofinancelabs/hak-bonzo-plugin`, `hak-pyth-plugin` (read-only market/price tools via v4 wrappers)
 
 **M3:** `hak-saucerswap-plugin` (quote + swap on SaucerSwap testnet)
+
+**M5:** `hak-hbar-policies` (workspace package)
 
 ## Routes
 
@@ -66,6 +91,10 @@ pnpm hbar:create-audit-topic
 | `/hbar/stub` | M1 policy demo |
 | `/hbar/yield-scout` | M2 Yield Scout (read-only APY report) |
 | `/hbar/swap-executor` | M3 Swap Executor (write swap + approval gate) |
+| `/hbar/lp-health` | M4 LP Health monitor |
+| `/hbar/price-feed-verifier` | M4 Price feed verifier |
+| `/hbar/studio` | M4 Agent Studio (train-your-own) |
 | `POST /api/hbar/pay` | Execute task payment through policy layer |
 | `POST /api/hbar/approve` | Human-in-the-loop approval callback |
-| `POST /api/hbar/run` | Agent run (Yield Scout / Swap Executor orchestration) |
+| `POST /api/hbar/run` | Agent run orchestration |
+| `GET /api/health` | Production health / uptime check |

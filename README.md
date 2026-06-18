@@ -1,5 +1,8 @@
 # CanHav.HBAR — AI Skills & Agent Marketplace for Hedera
 
+**Live demo (HBAR Skills):** [https://your-vercel-app.vercel.app/hbar](https://your-vercel-app.vercel.app/hbar) *(replace with your Vercel URL after deploy)*  
+**Feedback on Hedera AI Studio / Agent Lab:** [FEEDBACK.md](./FEEDBACK.md)
+
 **Hedera Hello Future Apex Hackathon 2026**
 
 CanHav.HBAR is an AI-native knowledge and agent marketplace for the Hedera blockchain ecosystem. It combines three layers:
@@ -72,6 +75,88 @@ Every user action generates verifiable Hedera transactions:
 | Database | PostgreSQL (Neon), Drizzle ORM |
 | Auth | Magic.link with Hedera extension |
 | Deploy | Vercel |
+
+## HBAR Skills — Policy-Gated DeFi Agents (AI Agent Bounty)
+
+Branch: **`ai-agent-bounty`** (Vercel production demo deploys from this branch)
+
+### Agent fleet
+
+| Agent | Route | Mode | Data sources |
+|-------|-------|------|--------------|
+| Yield Scout | `/hbar/yield-scout` | Read | Bonzo APY + Pyth prices |
+| Swap Executor | `/hbar/swap-executor` | Write | SaucerSwap testnet swaps |
+| LP Health | `/hbar/lp-health` | Read | SaucerSwap pool metrics |
+| Price Feed Verifier | `/hbar/price-feed-verifier` | Read | Pyth oracle cross-check |
+| **Agent Studio** | `/hbar/studio` | Train-your-own | Compose sources + policy envelope |
+
+Policy stub (M1): `/hbar/stub`
+
+### Policy layer — `hak-hbar-policies`
+
+Extracted workspace package at [`packages/hak-hbar-policies`](packages/hak-hbar-policies/) — publish-ready, not yet on npm.
+
+| Policy | Guards | Purpose |
+|--------|--------|---------|
+| `SpendLimitPolicy` | Payment tools | Per-task cap + daily budget |
+| `AllowedCounterpartyPolicy` | Payment tools | Allowlist / ERC-8004 registry |
+| `ContextualApprovalPolicy` | Payment + write | HITL approval for high-value pays and all swaps |
+| `SlippagePolicy` | Write tools | Quote freshness + max slippage |
+
+Session state is injected via `PolicyStatePort`. Production uses Drizzle/Neon (`policy_session_state` table) when `DATABASE_URL` is set.
+
+### Architecture (HBAR Skills)
+
+```
+UI (/hbar/*, /hbar/studio)
+  → API (/api/hbar/run, /pay, /approve)
+    → agent-runtime.ts (HederaAIToolkit + plugins)
+      → policies as hooks (hak-hbar-policies)
+        → Hedera Agent Kit v4
+          → plugins (Bonzo, Pyth, SaucerSwap)
+            → Hedera testnet (HBAR / HTS / HCS)
+```
+
+Health check for uptime monitoring: `GET /api/health`
+
+### HBAR Skills setup
+
+```bash
+pnpm install
+cp .env.example .env.local
+# Fill HBAR Skills vars (see table below)
+pnpm hbar:create-audit-topic   # → set HBAR_AUDIT_TOPIC_ID
+pnpm db:push                   # policy session state + custom agents
+pnpm dev
+```
+
+| Variable | Required for | Notes |
+|----------|--------------|-------|
+| `HEDERA_OPERATOR_ID` | All runs | ECDSA testnet account |
+| `HEDERA_OPERATOR_KEY` | All runs | ECDSA private key |
+| `OPENAI_API_KEY` | All runs | GPT-4o agent orchestration |
+| `SAUCERSWAP_API_KEY` | Swap / write demo | SaucerSwap testnet x-api-key |
+| `HBAR_AUDIT_TOPIC_ID` | Audit links | Output of `pnpm hbar:create-audit-topic` |
+| `DATABASE_URL` | Production approvals | Neon — required on Vercel for serverless policy state |
+| `NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS` | Registry counterparty | Optional — allowlist fallback exists |
+| `NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS` | Registry counterparty | Optional |
+| `HBAR_SWAP_EXECUTOR_AGENT_ID` | On-chain reputation | Optional |
+
+**Token association (owner manual step):** Associate worker account with demo `tokenOut` tokens (e.g. testnet SAUCE, WHBAR `0.0.15058`) via HashPack before swaps.
+
+### Bounty requirement map
+
+| Requirement | Where |
+|-------------|-------|
+| Hedera Agent Kit (JS) | `hbar-agents/lib/agent-runtime.ts` |
+| Policy layer (spend / counterparty / approval) | `packages/hak-hbar-policies` |
+| Real APIs (Bonzo, Pyth, SaucerSwap) | `hbar-agents/lib/plugins/` |
+| Policy in UI + execution flow | `/hbar/studio`, `/hbar/[agent]` |
+| Live demo URL | Vercel deploy from `ai-agent-bounty` |
+| 90-day uptime | Monitor `GET /api/health` |
+| AI Studio feedback | [FEEDBACK.md](./FEEDBACK.md) |
+
+See [`hbar-agents/README.md`](hbar-agents/README.md) for milestone acceptance details.
 
 ## Getting Started
 
