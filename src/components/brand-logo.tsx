@@ -13,7 +13,7 @@ export function BrandLogo({
   showByCh = true,
   className,
 }: BrandLogoProps) {
-  const textSize = size === "sm" ? "text-base" : "text-xl";
+  const textSize = size === "sm" ? "text-base" : "text-2xl";
   const byTextSize = size === "sm" ? "text-[10px]" : "text-xs";
   const chBoxSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
   const imageSize = size === "sm" ? 16 : 20;
@@ -30,7 +30,7 @@ export function BrandLogo({
         <span
           className={cn(
             "inline-flex items-center gap-1",
-            size === "sm" ? "-mt-0.5" : "-mt-1"
+            size === "sm" ? "-mt-0.5" : "-mt-1.5"
           )}
         >
           <span
