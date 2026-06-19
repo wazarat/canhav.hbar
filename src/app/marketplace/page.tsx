@@ -114,9 +114,6 @@ export default function MarketplacePage() {
         <section className="mb-12 rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 to-background p-6 md:p-8">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
             <div>
-              <Badge className="mb-3 bg-indigo-600/90 text-white">
-                Hedera AI Agent Bounty
-              </Badge>
               <h2 className="text-2xl font-bold mb-2">HBAR Skills — Policy-Gated DeFi Agents</h2>
               <p className="text-muted-foreground max-w-2xl">
                 Yield Scout, Swap Executor, LP Health, and more — constrained by
@@ -148,9 +145,6 @@ export default function MarketplacePage() {
                     <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
                       <Lock className="h-5 w-5 text-indigo-400" />
                     </div>
-                    <Badge variant="outline" className="text-xs">
-                      {agent.milestone}
-                    </Badge>
                   </div>
                   <CardTitle className="text-base mt-2">{agent.name}</CardTitle>
                   <CardDescription className="text-sm line-clamp-2">
@@ -170,11 +164,8 @@ export default function MarketplacePage() {
         </section>
 
         <div className="max-w-3xl mb-6">
-          <Badge variant="secondary" className="mb-2">
-            Legacy catalog
-          </Badge>
           <h2 className="text-xl font-semibold text-muted-foreground">
-            UCP Marketplace Agents
+            Marketplace Agents
           </h2>
         </div>
 

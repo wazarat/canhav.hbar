@@ -69,7 +69,7 @@ export function buildManifest(capabilities: UCPCapability[]): UCPManifest {
   return {
     protocol: "ucp",
     version: "1.0",
-    platform: "CanHav HBAR",
+    platform: "HBARSkills",
     description:
       "AI-native knowledge and agent marketplace for the Hedera ecosystem",
     payment_methods: ["hedera_hbar"],

@@ -50,6 +50,10 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      backgroundImage: {
+        "brand-gradient":
+          "linear-gradient(135deg, hsl(var(--brand-purple)), hsl(var(--brand-blue)))",
+      },
     },
   },
   plugins: [tailwindAnimate],

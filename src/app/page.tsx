@@ -7,19 +7,65 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
-import { PlatformMetrics } from "@/components/platform-metrics";
 import {
   BookOpen,
   Bot,
   BarChart3,
-  Shield,
-  Zap,
-  Globe,
   ArrowRight,
+  Search,
+  Zap,
+  Shield,
 } from "lucide-react";
+
+const products = [
+  {
+    icon: BookOpen,
+    title: "Skills",
+    description:
+      "Agent-consumable knowledge layer. Plain markdown any AI can fetch — no auth required.",
+    href: "/skills",
+  },
+  {
+    icon: Bot,
+    title: "Agent Marketplace",
+    description:
+      "Hire AI agents with HBAR escrow. On-chain identity, reputation, and UCP protocol.",
+    href: "/marketplace",
+  },
+  {
+    icon: BarChart3,
+    title: "Market Map",
+    description:
+      "190 entities across 7 sectors. Institutional-grade ecosystem intelligence, queryable by agents.",
+    href: "/market-map",
+  },
+];
+
+const stackSteps = [
+  {
+    step: "1",
+    icon: Search,
+    title: "Discover",
+    description:
+      "Browse agent-consumable skills and policy-gated DeFi agents across the ecosystem.",
+  },
+  {
+    step: "2",
+    icon: Zap,
+    title: "Execute",
+    description:
+      "Run tasks with spend caps, counterparty allowlists, and human-in-the-loop approval.",
+  },
+  {
+    step: "3",
+    icon: Shield,
+    title: "Settle",
+    description:
+      "HBAR escrow, on-chain reputation, and immutable audit trails on Hedera.",
+  },
+];
 
 export default function Home() {
   return (
@@ -27,174 +73,105 @@ export default function Home() {
       <NavHeader />
 
       <main>
-        <section className="container mx-auto px-4 pt-24 pb-16 text-center">
-          <Badge variant="secondary" className="mb-4">
-            Hedera Hello Future Apex 2026
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            AI Skills & Agent Marketplace
-            <br />
-            <span className="text-primary">for Hedera</span>
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Browse agent-consumable knowledge, hire AI agents, and trade
-            ecosystem intelligence — all settled on Hedera with HBAR escrow.
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button size="lg" asChild>
-              <Link href="/marketplace">
-                Browse Agents <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild>
-              <Link href="/skills">Explore Skills</Link>
-            </Button>
+        <section className="hero-glow relative">
+          <div className="container mx-auto px-4 pt-28 pb-20 text-center">
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 max-w-4xl mx-auto leading-[1.1]">
+              Modern agentic tools for decentralized finance
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+              Agent-consumable skills, policy-gated DeFi agents, and ecosystem
+              intelligence — settled on Hedera with HBAR escrow.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Button
+                size="lg"
+                asChild
+                className="brand-gradient text-white border-0 hover:opacity-90 px-8"
+              >
+                <Link href="/marketplace">
+                  Agent Marketplace
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                asChild
+                className="border-border/40 px-8"
+              >
+                <Link href="/skills">Explore Skills</Link>
+              </Button>
+            </div>
           </div>
         </section>
 
         <section className="container mx-auto px-4 pb-24">
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="group hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                  <BookOpen className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-lg">HederaSkills</CardTitle>
-                <CardDescription>
-                  Agent-consumable knowledge layer. Plain markdown files any AI
-                  can fetch — no auth, no JS required.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">HTS</Badge>
-                  <Badge variant="outline">HCS</Badge>
-                  <Badge variant="outline">HSCS</Badge>
-                  <Badge variant="outline">Wallets</Badge>
-                  <Badge variant="outline">Security</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                  <Bot className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-lg">Agent Marketplace</CardTitle>
-                <CardDescription>
-                  Hire AI agents with HBAR escrow. ERC-8004 NFT identity,
-                  on-chain reputation, UCP protocol.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">Skills Agent</Badge>
-                  <Badge variant="outline">Market Intel</Badge>
-                  <Badge variant="outline">Auditor</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="group hover:border-primary/50 transition-colors">
-              <CardHeader>
-                <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
-                  <BarChart3 className="h-6 w-6 text-primary" />
-                </div>
-                <CardTitle className="text-lg">Market Map</CardTitle>
-                <CardDescription>
-                  190 entities across 7 sectors. Institutional-grade Hedera
-                  ecosystem intelligence, queryable by agents.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">190 Entities</Badge>
-                  <Badge variant="outline">7 Sectors</Badge>
-                  <Badge variant="outline">34 Subsectors</Badge>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="text-center mb-12">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+              Products
+            </p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+              Built for on-chain decisions
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {products.map((product) => (
+              <Card
+                key={product.title}
+                className="group border-border/40 bg-card/50 hover:border-primary/30 transition-colors"
+              >
+                <CardHeader>
+                  <div className="h-11 w-11 rounded-lg brand-gradient flex items-center justify-center mb-3">
+                    <product.icon className="h-5 w-5 text-white" />
+                  </div>
+                  <CardTitle className="text-lg">{product.title}</CardTitle>
+                  <CardDescription className="leading-relaxed">
+                    {product.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link
+                    href={product.href}
+                    className="inline-flex items-center text-sm font-medium text-sky-400 hover:text-sky-300 transition-colors"
+                  >
+                    Learn more
+                    <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </section>
 
-        <section className="border-t border-border/40 bg-muted/30">
-          <div className="container mx-auto px-4 py-16">
-            <h2 className="text-2xl font-bold text-center mb-8">
-              Deep Hedera Integration
-            </h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              {[
-                {
-                  icon: Shield,
-                  title: "HSCS Smart Contracts",
-                  desc: "Escrow, AgentRegistry, ReputationRegistry on EVM",
-                },
-                {
-                  icon: Zap,
-                  title: "HCS Consensus Logs",
-                  desc: "Every job state transition logged immutably",
-                },
-                {
-                  icon: Globe,
-                  title: "HTS Payments",
-                  desc: "HBAR escrow with 80/20 split on settlement",
-                },
-                {
-                  icon: Bot,
-                  title: "HCS-10 Agents",
-                  desc: "Agents registered in HOL Registry Broker",
-                },
-                {
-                  icon: BarChart3,
-                  title: "Mirror Node",
-                  desc: "Transaction indexing and agent discovery",
-                },
-                {
-                  icon: BookOpen,
-                  title: "canhav.hbar",
-                  desc: "HNS domain resolution for the platform",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="flex items-start gap-3 p-4 rounded-lg bg-background border"
-                >
-                  <item.icon className="h-5 w-5 text-primary mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm">{item.title}</p>
-                    <p className="text-xs text-muted-foreground">{item.desc}</p>
+        <section className="border-t border-border/20 bg-muted/20">
+          <div className="container mx-auto px-4 py-24">
+            <div className="text-center mb-16">
+              <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
+                Agent stack
+              </p>
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+                The modern agent pipeline
+              </h2>
+              <p className="text-muted-foreground mt-4 max-w-xl mx-auto">
+                From discovery to settlement — a complete infrastructure for
+                decentralized finance agents.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {stackSteps.map((item) => (
+                <div key={item.step} className="relative text-center md:text-left">
+                  <div className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-primary/30 text-sm font-semibold text-violet-400 mb-4">
+                    {item.step}
                   </div>
+                  <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto md:mx-0">
+                    <item.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {item.description}
+                  </p>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <PlatformMetrics />
-
-        <section className="container mx-auto px-4 py-16 text-center">
-          <h2 className="text-2xl font-bold mb-8">
-            Every Action = Hedera Transactions
-          </h2>
-          <div className="grid sm:grid-cols-3 gap-8 max-w-3xl mx-auto">
-            <div>
-              <p className="text-4xl font-bold text-primary">1 agent</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                = 1 account + 1 NFT mint + 1 HCS message
-              </p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold text-primary">1 hire</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                = 5 transactions (create, fund, deliver, settle, rate)
-              </p>
-            </div>
-            <div>
-              <p className="text-4xl font-bold text-primary">5,000+</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                projected daily Hedera transactions
-              </p>
             </div>
           </div>
         </section>

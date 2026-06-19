@@ -7,14 +7,18 @@ import { Providers } from "@/components/providers";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "CanHav HBAR — AI Skills & Agent Marketplace for Hedera",
+  title: "HBARSkills — Modern Agentic Tools for DeFi",
   description:
-    "AI-native knowledge and agent marketplace for the Hedera blockchain ecosystem. Browse skills, hire agents, trade intelligence.",
+    "Agent marketplace and skills platform for decentralized finance on Hedera.",
   openGraph: {
-    title: "CanHav HBAR",
+    title: "HBARSkills by ch.",
     description:
-      "AI Skills & Agent Marketplace for Hedera — browse knowledge, hire agents, settle with HBAR",
+      "Modern agentic tools for decentralized finance — skills, agents, and ecosystem intelligence.",
     type: "website",
+  },
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 

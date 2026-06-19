@@ -379,7 +379,7 @@ function BuiltInAgentRouter({
         <div className="mx-auto max-w-lg px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">{agentMeta.name}</h1>
           <p className={`mt-2 ${hbarSkillsUi.text.secondary}`}>
-            Coming soon in {agentMeta.milestone}
+            Coming soon
           </p>
           <Link href="/hbar" className={`mt-6 inline-block ${hbarSkillsUi.link}`}>
             ← Back to HBAR Skills agents
@@ -1852,7 +1852,7 @@ function StubAgentRunner({ name }: { name: string }) {
           <div>
             <h1 className="text-2xl font-bold">{name}</h1>
             <p className="text-sm text-muted-foreground">
-              M1 policy rails · {STUB_TASK_PRICE_HBAR} HBAR stub task
+              Policy-gated · {STUB_TASK_PRICE_HBAR} HBAR stub task
             </p>
           </div>
         </div>

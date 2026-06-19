@@ -56,10 +56,7 @@ export default function HbarAgentsPage() {
     <main className={hbarSkillsUi.page}>
       <div className="mx-auto max-w-4xl px-4 py-12">
         <div className="mb-8">
-          <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
-            Hedera AI Agent Bounty
-          </p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight">HBAR Skills</h1>
+          <h1 className="text-3xl font-bold tracking-tight">HBAR Skills</h1>
           <p className={`mt-2 max-w-2xl ${hbarSkillsUi.text.secondary}`}>
             Policy-gated DeFi agents with spend caps, counterparty allowlists, and
             human-in-the-loop approval. Testnet only.
@@ -117,7 +114,7 @@ export default function HbarAgentsPage() {
                       variant="secondary"
                       className="border-zinc-600 bg-zinc-800 text-zinc-300"
                     >
-                      Coming soon · {agent.milestone}
+                      Coming soon
                     </Badge>
                   )}
                 </div>
@@ -132,7 +129,7 @@ export default function HbarAgentsPage() {
                   </Link>
                 ) : (
                   <span className={`text-sm ${hbarSkillsUi.text.muted}`}>
-                    Available in {agent.milestone}
+                    Coming soon
                   </span>
                 )}
               </CardContent>

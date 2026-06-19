@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Menu, X, Wallet, LogOut, Loader2 } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
+import { Menu, X, Wallet, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import {
@@ -15,11 +16,7 @@ import {
 
 const links = [
   { href: "/skills", label: "Skills" },
-  { href: "/hbar", label: "HBAR Skills" },
-  { href: "/ai-studio", label: "AI Studio" },
   { href: "/marketplace", label: "Marketplace" },
-  { href: "/market-map", label: "Market Map" },
-  { href: "/demo", label: "Demo" },
   { href: "/dashboard", label: "Dashboard" },
 ];
 
@@ -30,18 +27,13 @@ export function NavHeader() {
     useWalletStore();
 
   return (
-    <header className="border-b border-border/40 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
+    <header className="border-b border-border/20 backdrop-blur-md sticky top-0 z-50 bg-background/70">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl">
-            CanHav<span className="text-primary">.HBAR</span>
-          </span>
+        <Link href="/" className="flex items-center">
+          <BrandLogo />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-8">
           {links.map((l) => (
             <Link
               key={l.href}
@@ -68,7 +60,7 @@ export function NavHeader() {
               >
                 <Badge
                   variant="outline"
-                  className="cursor-pointer hover:bg-muted transition-colors hidden sm:flex"
+                  className="cursor-pointer hover:bg-muted transition-colors hidden sm:flex border-border/40"
                 >
                   <Wallet className="h-3 w-3 mr-1.5" />
                   {shortenAddress(address)}
@@ -84,7 +76,12 @@ export function NavHeader() {
               </Button>
             </div>
           ) : (
-            <Button size="sm" onClick={connect} disabled={isConnecting}>
+            <Button
+              size="sm"
+              onClick={connect}
+              disabled={isConnecting}
+              className="brand-gradient text-white border-0 hover:opacity-90"
+            >
               {isConnecting ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
@@ -96,6 +93,7 @@ export function NavHeader() {
           <button
             className="md:hidden p-2"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
           >
             {mobileOpen ? (
               <X className="h-5 w-5" />
@@ -107,7 +105,7 @@ export function NavHeader() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-border/40 bg-background px-4 pb-4">
+        <div className="md:hidden border-t border-border/20 bg-background/95 backdrop-blur-md px-4 pb-4">
           {links.map((l) => (
             <Link
               key={l.href}
