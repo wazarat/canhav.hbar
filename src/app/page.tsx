@@ -10,6 +10,7 @@ import {
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
 import { HeroBackground } from "@/components/landing/hero-background";
+import { HeroScene } from "@/components/landing/hero-scene-loader";
 import {
   BookOpen,
   Bot,
@@ -74,10 +75,10 @@ export default function Home() {
       <NavHeader />
 
       <main>
-        <section className="relative min-h-[90vh] overflow-hidden bg-black">
+        <section className="relative min-h-screen overflow-hidden bg-black">
           <HeroBackground />
-          <div className="container relative z-10 mx-auto px-4 pt-32 pb-28 md:pt-40 md:pb-32">
-            <div className="max-w-5xl text-left">
+          <div className="container relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] gap-8 px-4 lg:grid-cols-2">
+            <div className="flex max-w-xl flex-col justify-end pb-16 md:pb-24 lg:pb-32">
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
                 Modern agentic tools for decentralized finance
               </h1>
@@ -105,6 +106,9 @@ export default function Home() {
                   <Link href="/skills">Explore Skills</Link>
                 </Button>
               </div>
+            </div>
+            <div className="relative hidden min-h-[500px] lg:block">
+              <HeroScene />
             </div>
           </div>
         </section>
