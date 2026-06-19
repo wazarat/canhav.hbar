@@ -46,7 +46,7 @@ export function BrandLogo({
             aria-label="canhav.co"
           >
             <Image
-              src="/favicon.png"
+              src="/mark.svg"
               alt="ch."
               width={imageSize}
               height={imageSize}
