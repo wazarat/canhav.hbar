@@ -19,7 +19,7 @@ export function BrandLogo({
   const imageSize = size === "sm" ? 16 : 20;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
+    <span className={cn("inline-flex flex-col gap-0.5", className)}>
       <span
         className={cn("font-bold tracking-tight leading-none", textSize)}
       >
