@@ -77,8 +77,19 @@ export default function Home() {
       <main>
         <section className="relative min-h-screen overflow-hidden bg-black">
           <HeroBackground />
-          <div className="container relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] gap-8 px-4 lg:grid-cols-2">
-            <div className="flex max-w-xl flex-col justify-end pb-16 md:pb-24 lg:pb-32">
+          <div className="absolute inset-0 hidden lg:block" aria-hidden>
+            <HeroScene />
+          </div>
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/20"
+            aria-hidden
+          />
+          <div className="container relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] flex-col justify-end px-4 pb-16 md:pb-24 lg:pb-32">
+            <div className="max-w-xl">
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
                 Modern agentic tools for decentralized finance
               </h1>
@@ -106,9 +117,6 @@ export default function Home() {
                   <Link href="/skills">Explore Skills</Link>
                 </Button>
               </div>
-            </div>
-            <div className="relative hidden min-h-[500px] lg:block">
-              <HeroScene />
             </div>
           </div>
         </section>

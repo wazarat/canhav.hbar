@@ -18,7 +18,7 @@ type HudCardProps = {
 function HudCard({ label, value, accent, position }: HudCardProps) {
   return (
     <Html position={position} center transform occlude={false} zIndexRange={[0, 0]}>
-      <div className="pointer-events-none select-none w-36 rounded-lg border border-white/10 bg-black/50 px-3 py-2 backdrop-blur-md shadow-lg">
+      <div className="pointer-events-none select-none w-36 rounded-lg border border-white/10 bg-black/30 px-3 py-2 backdrop-blur-sm shadow-lg">
         <p className="text-[10px] uppercase tracking-wider text-zinc-400">{label}</p>
         <p className="text-sm font-semibold" style={{ color: accent }}>
           {value}
@@ -160,9 +160,9 @@ function ParticleField({ animate }: { animate: boolean }) {
   const positions = useMemo(() => {
     const arr = new Float32Array(200 * 3);
     for (let i = 0; i < 200; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 12;
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 8;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 8;
+      arr[i * 3] = (Math.random() - 0.2) * 16;
+      arr[i * 3 + 1] = (Math.random() - 0.5) * 10;
+      arr[i * 3 + 2] = (Math.random() - 0.5) * 10;
     }
     return arr;
   }, []);
@@ -201,13 +201,13 @@ function SceneContent({
   mouse: React.MutableRefObject<{ x: number; y: number }>;
 }) {
   return (
-    <>
+    <group position={[2.2, -0.2, 0]}>
       <ambientLight intensity={0.3} />
       <pointLight position={[4, 4, 4]} intensity={1.2} color="#a78bfa" />
       <pointLight position={[-4, -2, 2]} intensity={0.8} color="#38bdf8" />
       <ParticleField animate={animate} />
       <OrbitingNodes animate={animate} mouse={mouse} />
-    </>
+    </group>
   );
 }
 
@@ -253,10 +253,10 @@ function HeroSceneInner() {
       aria-hidden="true"
     >
       <Canvas
-        camera={{ position: [0, 0, 6], fov: 45 }}
+        camera={{ position: [0.5, 0, 6], fov: 50 }}
         dpr={[1, 1.5]}
         frameloop={visible && animate ? "always" : "demand"}
-        gl={{ alpha: true, antialias: true }}
+        gl={{ alpha: true, antialias: true, powerPreference: "high-performance" }}
         style={{ background: "transparent" }}
       >
         <SceneContent animate={animate} mouse={mouse} />
