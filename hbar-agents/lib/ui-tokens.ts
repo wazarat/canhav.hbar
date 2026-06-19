@@ -1,7 +1,7 @@
 /** Shared HBAR Skills enterprise UI tokens (M2+). */
 export const hbarSkillsUi = {
   page: "min-h-screen bg-zinc-950 text-zinc-100",
-  surface: "bg-zinc-900 border-zinc-800",
+  surface: "bg-zinc-950/80 border-zinc-800/80",
   muted: "bg-zinc-800/60",
   text: {
     primary: "text-zinc-100",
@@ -10,7 +10,7 @@ export const hbarSkillsUi = {
   },
   border: "border-zinc-700",
   input:
-    "rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500",
+    "rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/30",
   accentButton:
     "bg-gradient-to-r from-indigo-700 to-purple-600 text-white hover:from-indigo-600 hover:to-purple-500 border-0",
   link: "text-indigo-400 hover:text-indigo-300 hover:underline",

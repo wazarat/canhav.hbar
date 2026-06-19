@@ -43,7 +43,7 @@ export const AGENT_CATALOG = [
   },
   {
     id: "stub",
-    name: "Policy Stub (M1)",
+    name: "Policy Stub",
     description: "Pay 1 testnet HBAR for a mock task — exercises policy layer",
     status: "active" as const,
     milestone: "M1",

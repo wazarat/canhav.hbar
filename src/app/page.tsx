@@ -121,7 +121,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="container mx-auto px-4 pb-24">
+        <section className="container mx-auto px-4 pb-24 pt-24 md:pt-32 border-t border-border/10">
           <div className="text-center mb-12">
             <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3">
               Products

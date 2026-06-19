@@ -161,7 +161,7 @@ function ApprovalModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${hbarSkillsUi.surface} ${hbarSkillsUi.text.primary} border-zinc-700`}>
+      <DialogContent className={`${hbarSkillsUi.surface} ${hbarSkillsUi.text.primary} border-zinc-800`}>
         <DialogHeader>
           <DialogTitle>Approval required</DialogTitle>
           <DialogDescription className={hbarSkillsUi.text.secondary}>
@@ -811,7 +811,7 @@ function SwapApprovalModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`${hbarSkillsUi.surface} ${hbarSkillsUi.text.primary} border-zinc-700 max-w-md`}>
+      <DialogContent className={`${hbarSkillsUi.surface} ${hbarSkillsUi.text.primary} border-zinc-800 max-w-md`}>
         <DialogHeader>
           <DialogTitle>
             {isSwap ? "Approve swap transaction" : "Approve task payment"}
@@ -1842,16 +1842,16 @@ function StubAgentRunner({ name }: { name: string }) {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className={hbarSkillsUi.page}>
       <div className="mx-auto max-w-2xl px-4 py-12">
-        <Link href="/hbar" className="text-sm text-muted-foreground hover:text-foreground">
+        <Link href="/hbar" className={`text-sm ${hbarSkillsUi.text.secondary} hover:text-zinc-200`}>
           ← All agents
         </Link>
         <div className="mt-4 flex items-center gap-3">
-          <Shield className="h-8 w-8 text-emerald-500" />
+          <Shield className="h-8 w-8 text-violet-400" />
           <div>
             <h1 className="text-2xl font-bold">{name}</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className={`text-sm ${hbarSkillsUi.text.secondary}`}>
               Policy-gated · {STUB_TASK_PRICE_HBAR} HBAR stub task
             </p>
           </div>
@@ -1860,7 +1860,7 @@ function StubAgentRunner({ name }: { name: string }) {
         <BudgetControls budget={budget} onChange={setBudget} />
 
         <label className="mt-4 grid gap-1 text-sm">
-          <span className="text-muted-foreground">
+          <span className={hbarSkillsUi.text.secondary}>
             Test payment amount (HBAR) — use &gt; cap to test SpendLimit
           </span>
           <input
@@ -1869,7 +1869,7 @@ function StubAgentRunner({ name }: { name: string }) {
             step={0.1}
             value={testAmount}
             onChange={(e) => setTestAmount(parseFloat(e.target.value) || 1)}
-            className="rounded-md border bg-background px-3 py-2"
+            className={hbarSkillsUi.input}
           />
         </label>
 
@@ -1878,21 +1878,32 @@ function StubAgentRunner({ name }: { name: string }) {
         </div>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button onClick={() => runPay(STUB_TASK_PRICE_HBAR)} disabled={loading}>
+          <Button
+            className={hbarSkillsUi.accentButton}
+            onClick={() => runPay(STUB_TASK_PRICE_HBAR)}
+            disabled={loading}
+          >
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Pay {STUB_TASK_PRICE_HBAR} HBAR (stub task)
           </Button>
-          <Button variant="outline" onClick={() => runPay(testAmount)} disabled={loading}>
+          <Button
+            variant="outline"
+            className="border-zinc-600 bg-transparent text-zinc-300 hover:bg-zinc-800"
+            onClick={() => runPay(testAmount)}
+            disabled={loading}
+          >
             Test custom amount
           </Button>
         </div>
 
         {lastResult && (
-          <Card className="mt-6">
+          <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
             <CardHeader>
-              <CardTitle className="text-base">Result</CardTitle>
+              <CardTitle className={`text-base ${hbarSkillsUi.text.primary}`}>
+                Result
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className={`space-y-2 text-sm ${hbarSkillsUi.text.primary}`}>
               <p>
                 Status: <strong>{lastResult.status}</strong>
               </p>
@@ -1906,14 +1917,14 @@ function StubAgentRunner({ name }: { name: string }) {
                     href={`https://hashscan.io/testnet/transaction/${lastResult.txId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-emerald-500 hover:underline"
+                    className={hbarSkillsUi.link}
                   >
                     {lastResult.txId}
                   </a>
                 </p>
               )}
               {lastResult.result != null && (
-                <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-xs">
+                <pre className={`mt-2 overflow-x-auto rounded-md ${hbarSkillsUi.muted} p-3 text-xs ${hbarSkillsUi.text.secondary}`}>
                   {JSON.stringify(lastResult.result, null, 2)}
                 </pre>
               )}
