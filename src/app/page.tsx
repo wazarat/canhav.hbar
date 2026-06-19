@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { NavHeader } from "@/components/nav-header";
 import { Footer } from "@/components/footer";
+import { HeroBackground } from "@/components/landing/hero-background";
 import {
   BookOpen,
   Bot,
@@ -73,34 +74,37 @@ export default function Home() {
       <NavHeader />
 
       <main>
-        <section className="hero-glow relative">
-          <div className="container mx-auto px-4 pt-28 pb-20 text-center">
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 max-w-4xl mx-auto leading-[1.1]">
-              Modern agentic tools for decentralized finance
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              Agent-consumable skills, policy-gated DeFi agents, and ecosystem
-              intelligence — settled on Hedera with HBAR escrow.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Button
-                size="lg"
-                asChild
-                className="brand-gradient text-white border-0 hover:opacity-90 px-8"
-              >
-                <Link href="/marketplace">
-                  Agent Marketplace
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                asChild
-                className="border-border/40 px-8"
-              >
-                <Link href="/skills">Explore Skills</Link>
-              </Button>
+        <section className="relative min-h-[90vh] overflow-hidden bg-black">
+          <HeroBackground />
+          <div className="container relative z-10 mx-auto px-4 pt-32 pb-28 md:pt-40 md:pb-32">
+            <div className="max-w-5xl text-left">
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
+                Modern agentic tools for decentralized finance
+              </h1>
+              <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mb-10 leading-relaxed">
+                Agent-consumable skills, policy-gated DeFi agents, and ecosystem
+                intelligence, settled on Hedera with HBAR escrow.
+              </p>
+              <div className="flex flex-col sm:flex-row items-start justify-start gap-4">
+                <Button
+                  size="lg"
+                  asChild
+                  className="brand-gradient text-white border-0 hover:opacity-90 px-8"
+                >
+                  <Link href="/marketplace">
+                    Agent Marketplace
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  asChild
+                  className="border-border/40 px-8"
+                >
+                  <Link href="/skills">Explore Skills</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </section>

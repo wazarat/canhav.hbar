@@ -27,7 +27,7 @@ export function NavHeader() {
     useWalletStore();
 
   return (
-    <header className="border-b border-border/20 backdrop-blur-md sticky top-0 z-50 bg-background/70">
+    <header className="border-b border-white/5 sticky top-0 z-50 bg-black">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center">
           <BrandLogo />
@@ -105,7 +105,7 @@ export function NavHeader() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-border/20 bg-background/95 backdrop-blur-md px-4 pb-4">
+        <div className="md:hidden border-t border-white/5 bg-black px-4 pb-4">
           {links.map((l) => (
             <Link
               key={l.href}

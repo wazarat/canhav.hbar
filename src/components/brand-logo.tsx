@@ -14,19 +14,22 @@ export function BrandLogo({
   className,
 }: BrandLogoProps) {
   const textSize = size === "sm" ? "text-base" : "text-xl";
-  const imageSize = size === "sm" ? 20 : 24;
+  const chBoxSize = size === "sm" ? "h-6 w-6" : "h-8 w-8";
+  const imageSize = size === "sm" ? 24 : 32;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5", className)}>
-      <span className={cn("font-bold tracking-tight", textSize)}>
-        <span className="text-violet-400">HBAR</span>
-        <span className="text-sky-400">Skills</span>
+    <span className={cn("inline-flex items-center gap-2", className)}>
+      <span
+        className={cn("font-bold tracking-tight leading-none", textSize)}
+      >
+        <span className="text-white">HBAR</span>
+        <span className="text-violet-400">Skills</span>
       </span>
       {showByCh && (
         <>
           <span
             className={cn(
-              "font-normal text-muted-foreground",
+              "font-normal text-muted-foreground leading-none",
               size === "sm" ? "text-xs" : "text-sm"
             )}
           >
@@ -36,7 +39,10 @@ export function BrandLogo({
             href="https://canhav.co"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center hover:opacity-80 transition-opacity"
+            className={cn(
+              "inline-flex shrink-0 items-center justify-center hover:opacity-80 transition-opacity",
+              chBoxSize
+            )}
             aria-label="canhav.co"
           >
             <Image
@@ -44,7 +50,7 @@ export function BrandLogo({
               alt="ch."
               width={imageSize}
               height={imageSize}
-              className="rounded-sm"
+              className="h-full w-full object-contain"
             />
           </Link>
         </>
