@@ -14,11 +14,12 @@ export function BrandLogo({
   className,
 }: BrandLogoProps) {
   const textSize = size === "sm" ? "text-base" : "text-xl";
-  const chBoxSize = size === "sm" ? "h-6 w-6" : "h-8 w-8";
-  const imageSize = size === "sm" ? 24 : 32;
+  const byTextSize = size === "sm" ? "text-[10px]" : "text-xs";
+  const chBoxSize = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+  const imageSize = size === "sm" ? 16 : 20;
 
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
+    <span className={cn("inline-flex items-center gap-1.5", className)}>
       <span
         className={cn("font-bold tracking-tight leading-none", textSize)}
       >
@@ -26,11 +27,11 @@ export function BrandLogo({
         <span className="text-violet-400">Skills</span>
       </span>
       {showByCh && (
-        <>
+        <span className="inline-flex items-center gap-1">
           <span
             className={cn(
               "font-normal text-muted-foreground leading-none",
-              size === "sm" ? "text-xs" : "text-sm"
+              byTextSize
             )}
           >
             by
@@ -53,7 +54,7 @@ export function BrandLogo({
               className="h-full w-full object-contain"
             />
           </Link>
-        </>
+        </span>
       )}
     </span>
   );
