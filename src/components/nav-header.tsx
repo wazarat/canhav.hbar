@@ -15,6 +15,7 @@ import {
 
 const links = [
   { href: "/skills", label: "Skills" },
+  { href: "/hbar", label: "HBAR Skills" },
   { href: "/ai-studio", label: "AI Studio" },
   { href: "/marketplace", label: "Marketplace" },
   { href: "/market-map", label: "Market Map" },

@@ -35,7 +35,11 @@ import {
   Code,
   GitBranch,
   Sparkles,
+  Lock,
 } from "lucide-react";
+import { AGENT_CATALOG } from "@hbar/lib/agent-catalog";
+
+const hbarActiveAgents = AGENT_CATALOG.filter((a) => a.status === "active");
 
 type AgentData = {
   id: string;
@@ -105,6 +109,73 @@ export default function MarketplacePage() {
             Hire AI agents with HBAR escrow. ERC-8004 NFT identity, on-chain
             reputation, Universal Commerce Protocol.
           </p>
+        </div>
+
+        <section className="mb-12 rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 to-background p-6 md:p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between mb-6">
+            <div>
+              <Badge className="mb-3 bg-indigo-600/90 text-white">
+                Hedera AI Agent Bounty
+              </Badge>
+              <h2 className="text-2xl font-bold mb-2">HBAR Skills — Policy-Gated DeFi Agents</h2>
+              <p className="text-muted-foreground max-w-2xl">
+                Yield Scout, Swap Executor, LP Health, and more — constrained by
+                spend limits, counterparty allowlists, and human approval. Testnet only.
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
+              <Button asChild>
+                <Link href="/hbar">
+                  View all agents <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/hbar/studio">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Agent Studio
+                </Link>
+              </Button>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {hbarActiveAgents.map((agent) => (
+              <Card
+                key={agent.id}
+                className="border-indigo-500/20 bg-background/60 hover:border-indigo-500/50 transition-colors"
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="h-10 w-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                      <Lock className="h-5 w-5 text-indigo-400" />
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {agent.milestone}
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-base mt-2">{agent.name}</CardTitle>
+                  <CardDescription className="text-sm line-clamp-2">
+                    {agent.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="secondary" size="sm" className="w-full" asChild>
+                    <Link href={`/hbar/${agent.id}`}>
+                      Run agent <ArrowRight className="ml-2 h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <div className="max-w-3xl mb-6">
+          <Badge variant="secondary" className="mb-2">
+            Legacy catalog
+          </Badge>
+          <h2 className="text-xl font-semibold text-muted-foreground">
+            UCP Marketplace Agents
+          </h2>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
