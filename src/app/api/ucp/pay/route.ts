@@ -11,6 +11,19 @@ const ESCROW_STATUS_FUNDED = 1;
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: "Database not configured" },
+        { status: 503 }
+      );
+    }
+    if (!process.env.NEXT_PUBLIC_ESCROW_ADDRESS) {
+      return NextResponse.json(
+        { error: "Contracts not deployed; set ESCROW address" },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { sessionId } = body;
 

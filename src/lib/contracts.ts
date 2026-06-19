@@ -13,20 +13,22 @@ export function getProvider(): ethers.JsonRpcProvider {
   return new ethers.JsonRpcProvider(getRpcUrl());
 }
 
-export function getSigner(): ethers.Wallet {
-  const key = process.env.HEDERA_PRIVATE_KEY;
-  if (!key) throw new Error("HEDERA_PRIVATE_KEY required");
-
-  // Hedera keys need to be converted to ECDSA hex for ethers.js
-  // If key starts with 0x, use directly; otherwise try DER format
-  let hexKey = key;
-  if (!key.startsWith("0x")) {
-    // DER-encoded ECDSA key: last 32 bytes
-    const raw = Buffer.from(key, "hex");
-    hexKey = "0x" + raw.subarray(raw.length - 32).toString("hex");
+function resolveEvmPrivateKeyHex(): string {
+  const key =
+    process.env.HEDERA_OPERATOR_KEY || process.env.DEPLOYER_PRIVATE_KEY;
+  if (!key) {
+    throw new Error(
+      "HEDERA_OPERATOR_KEY required for EVM signing (or DEPLOYER_PRIVATE_KEY for local Foundry deploy)"
+    );
   }
+  if (key.startsWith("0x")) return key;
+  // DER-encoded ECDSA key: last 32 bytes
+  const raw = Buffer.from(key, "hex");
+  return "0x" + raw.subarray(raw.length - 32).toString("hex");
+}
 
-  return new ethers.Wallet(hexKey, getProvider());
+export function getSigner(): ethers.Wallet {
+  return new ethers.Wallet(resolveEvmPrivateKeyHex(), getProvider());
 }
 
 const AGENT_REGISTRY_ABI = [

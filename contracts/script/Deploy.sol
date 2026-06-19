@@ -8,10 +8,9 @@ import "../src/Escrow.sol";
 
 contract Deploy is Script {
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address deployer = vm.addr(deployerPrivateKey);
+        address deployer = msg.sender;
 
-        vm.startBroadcast(deployerPrivateKey);
+        vm.startBroadcast();
 
         AgentRegistry agentRegistry = new AgentRegistry();
         ReputationRegistry reputationRegistry = new ReputationRegistry();
@@ -19,8 +18,11 @@ contract Deploy is Script {
 
         vm.stopBroadcast();
 
-        console.log("AgentRegistry deployed at:", address(agentRegistry));
-        console.log("ReputationRegistry deployed at:", address(reputationRegistry));
-        console.log("Escrow deployed at:", address(escrow));
+        console.log("");
+        console.log("=== Hedera Testnet Deployment ===");
+        console.log("NEXT_PUBLIC_AGENT_REGISTRY_ADDRESS=", address(agentRegistry));
+        console.log("NEXT_PUBLIC_REPUTATION_REGISTRY_ADDRESS=", address(reputationRegistry));
+        console.log("NEXT_PUBLIC_ESCROW_ADDRESS=", address(escrow));
+        console.log("");
     }
 }

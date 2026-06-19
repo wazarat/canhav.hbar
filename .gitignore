@@ -30,10 +30,12 @@ yarn-error.log*
 # local env files
 .env
 .env*.local
+contracts/.env
 
 # foundry
 contracts/out/
 contracts/cache/
+contracts/broadcast/
 contracts/lib/
 
 # vercel

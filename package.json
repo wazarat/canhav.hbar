@@ -9,7 +9,7 @@
     "lint": "next lint",
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test -vvv",
-    "contracts:deploy:testnet": "cd contracts && forge script script/Deploy.s.sol --rpc-url https://testnet.hashio.io/api --broadcast --slow --verify --verifier sourcify --verifier-url https://server-verify.hashscan.io/api --chain-id 296",
+    "contracts:deploy:testnet": "cd contracts && forge script script/Deploy.sol --rpc-url https://testnet.hashio.io/api --broadcast --slow --verify --verifier sourcify --verifier-url https://server-verify.hashscan.io/api --chain-id 296",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
