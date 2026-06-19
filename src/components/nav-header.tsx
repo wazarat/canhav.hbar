@@ -29,7 +29,7 @@ export function NavHeader() {
   return (
     <header className="border-b border-white/5 sticky top-0 z-50 bg-black">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center">
+        <Link href="/" className="flex items-center pt-1.5">
           <BrandLogo />
         </Link>
 

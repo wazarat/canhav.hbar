@@ -19,9 +19,9 @@ export function BrandLogo({
   const imageSize = size === "sm" ? 16 : 20;
 
   return (
-    <span className={cn("inline-flex flex-col", className)}>
+    <span className={cn("inline-block", className)}>
       <span
-        className={cn("font-bold tracking-tight leading-none", textSize)}
+        className={cn("block font-bold tracking-tight leading-none", textSize)}
       >
         <span className="text-white">HBAR</span>
         <span className="text-violet-400">Skills</span>
@@ -29,7 +29,7 @@ export function BrandLogo({
       {showByCh && (
         <span
           className={cn(
-            "inline-flex items-center gap-1",
+            "flex w-full items-center justify-end gap-1",
             size === "sm" ? "-mt-0.5" : "-mt-1.5"
           )}
         >
