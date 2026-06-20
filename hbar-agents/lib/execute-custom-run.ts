@@ -23,6 +23,7 @@ import {
   buildSwapUserMessage,
 } from "./swap-gate";
 import { HBAR_STUB_PAY_TOOL } from "./x402/pay";
+import { isSaucerSwapConfigured, SAUCERSWAP_UNAVAILABLE_REASON } from "./env";
 
 export interface CustomAgentRunRequest {
   sessionId: string;
@@ -210,6 +211,15 @@ export async function executeCustomRun(
       status: "blocked",
       policy: "validation",
       reason: message,
+      policyState: "within policy",
+    };
+  }
+
+  if (spec.allowWrite === true && !isSaucerSwapConfigured()) {
+    return {
+      status: "blocked",
+      policy: "configuration",
+      reason: SAUCERSWAP_UNAVAILABLE_REASON,
       policyState: "within policy",
     };
   }

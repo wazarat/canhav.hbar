@@ -116,6 +116,21 @@ function AgentStudioPage() {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<RunResult | null>(null);
   const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+  const [saucerSwapAvailable, setSaucerSwapAvailable] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/hbar/catalog")
+      .then((r) => (r.ok ? r.json() : { saucerswapConfigured: false }))
+      .then((data: { saucerswapConfigured?: boolean }) => {
+        const available = data.saucerswapConfigured === true;
+        setSaucerSwapAvailable(available);
+        if (!available) setAllowWrite(false);
+      })
+      .catch(() => {
+        setSaucerSwapAvailable(false);
+        setAllowWrite(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (!loadAgentId) return;
@@ -444,7 +459,10 @@ function AgentStudioPage() {
                   <input
                     type="checkbox"
                     checked={allowWrite}
-                    disabled={!dataSources.includes("saucerswap-quote")}
+                    disabled={
+                      !dataSources.includes("saucerswap-quote") ||
+                      !saucerSwapAvailable
+                    }
                     onChange={(e) => setAllowWrite(e.target.checked)}
                   />
                   <span className={hbarSkillsUi.text.primary}>
@@ -454,6 +472,12 @@ function AgentStudioPage() {
                         — enable SaucerSwap data source first
                       </span>
                     )}
+                    {dataSources.includes("saucerswap-quote") &&
+                      !saucerSwapAvailable && (
+                        <span className={`ml-2 ${hbarSkillsUi.text.muted}`}>
+                          — demo unavailable: SaucerSwap API key pending
+                        </span>
+                      )}
                   </span>
                 </label>
                 {allowWrite && dataSources.includes("saucerswap-quote") && (

@@ -1,3 +1,5 @@
+import { isSaucerSwapConfigured } from "./env";
+
 export const AGENT_CATALOG = [
   {
     id: "yield-scout",
@@ -50,6 +52,14 @@ export const AGENT_CATALOG = [
   },
 ] as const;
 
+export const SAUCERSWAP_DEPENDENT_AGENT_IDS = [
+  "swap-executor",
+  "price-feed-verifier",
+] as const;
+
+const SAUCERSWAP_UNAVAILABLE_SUFFIX =
+  " — demo unavailable: SaucerSwap API key pending";
+
 export type AgentCatalogEntry = (typeof AGENT_CATALOG)[number];
 
 export type MergedCatalogEntry = {
@@ -60,3 +70,30 @@ export type MergedCatalogEntry = {
   milestone?: string;
   isCustom?: boolean;
 };
+
+export function getResolvedAgentCatalog(): MergedCatalogEntry[] {
+  const saucerAvailable = isSaucerSwapConfigured();
+
+  return AGENT_CATALOG.map((entry) => {
+    if (
+      !saucerAvailable &&
+      (SAUCERSWAP_DEPENDENT_AGENT_IDS as readonly string[]).includes(entry.id)
+    ) {
+      return {
+        id: entry.id,
+        name: entry.name,
+        description: `${entry.description}${SAUCERSWAP_UNAVAILABLE_SUFFIX}`,
+        status: "coming_soon" as const,
+        milestone: entry.milestone,
+      };
+    }
+
+    return {
+      id: entry.id,
+      name: entry.name,
+      description: entry.description,
+      status: entry.status,
+      milestone: entry.milestone,
+    };
+  });
+}

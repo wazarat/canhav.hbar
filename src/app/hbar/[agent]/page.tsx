@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AGENT_CATALOG } from "@hbar/lib/agent-catalog";
+import { AGENT_CATALOG, type MergedCatalogEntry } from "@hbar/lib/agent-catalog";
 import {
   stubAgentConfig,
   STUB_TASK_PRICE_HBAR,
@@ -77,6 +77,7 @@ type PayResult = {
   approvalId?: string;
   approvalKind?: "payment" | "swap";
   recipient?: string;
+  recipientId?: string;
   amountHbar?: number;
   swapMetadata?: SwapQuotePreview;
 };
@@ -257,6 +258,48 @@ function HashScanLinks({
   );
 }
 
+function PaymentSummary({
+  amountHbar,
+  recipientId,
+  txId,
+}: {
+  amountHbar?: number;
+  recipientId?: string;
+  txId?: string;
+}) {
+  if (amountHbar == null && !recipientId) return null;
+
+  const hashScanBase =
+    process.env.NEXT_PUBLIC_HASHSCAN_URL ?? "https://hashscan.io/testnet";
+
+  return (
+    <p className={`mt-4 text-sm ${hbarSkillsUi.text.secondary}`}>
+      {amountHbar != null && recipientId ? (
+        <>
+          Paid {amountHbar} HBAR to{" "}
+          <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-200">
+            {recipientId}
+          </code>
+        </>
+      ) : null}
+      {txId ? (
+        <>
+          {amountHbar != null && recipientId ? " — " : null}
+          <a
+            href={`${hashScanBase}/transaction/${txId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-1 font-medium ${hbarSkillsUi.link}`}
+          >
+            view on HashScan
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </>
+      ) : null}
+    </p>
+  );
+}
+
 function YieldScoutReportTable({ report }: { report: YieldScoutReport }) {
   return (
     <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
@@ -373,14 +416,63 @@ function BuiltInAgentRouter({
 }: {
   agentMeta: (typeof AGENT_CATALOG)[number];
 }) {
-  if (agentMeta.status !== "active") {
+  const [resolvedEntry, setResolvedEntry] = useState<MergedCatalogEntry | null>(
+    null
+  );
+  const [catalogLoading, setCatalogLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/hbar/catalog")
+      .then((r) => (r.ok ? r.json() : { agents: [] }))
+      .then((data: { agents?: MergedCatalogEntry[] }) => {
+        const entry = data.agents?.find((a) => a.id === agentMeta.id);
+        setResolvedEntry(
+          entry ?? {
+            id: agentMeta.id,
+            name: agentMeta.name,
+            description: agentMeta.description,
+            status: agentMeta.status,
+            milestone: agentMeta.milestone,
+          }
+        );
+      })
+      .catch(() =>
+        setResolvedEntry({
+          id: agentMeta.id,
+          name: agentMeta.name,
+          description: agentMeta.description,
+          status: agentMeta.status,
+          milestone: agentMeta.milestone,
+        })
+      )
+      .finally(() => setCatalogLoading(false));
+  }, [agentMeta]);
+
+  if (catalogLoading) {
+    return (
+      <main className={hbarSkillsUi.page}>
+        <div className="mx-auto max-w-lg px-4 py-12 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-indigo-400" />
+        </div>
+      </main>
+    );
+  }
+
+  const status = resolvedEntry?.status ?? agentMeta.status;
+
+  if (status !== "active") {
     return (
       <main className={hbarSkillsUi.page}>
         <div className="mx-auto max-w-lg px-4 py-12 text-center">
           <h1 className="text-2xl font-bold">{agentMeta.name}</h1>
           <p className={`mt-2 ${hbarSkillsUi.text.secondary}`}>
-            Coming soon
+            Demo unavailable — SaucerSwap API key pending
           </p>
+          {resolvedEntry?.description && (
+            <p className={`mt-2 text-sm ${hbarSkillsUi.text.muted}`}>
+              {resolvedEntry.description}
+            </p>
+          )}
           <Link href="/hbar" className={`mt-6 inline-block ${hbarSkillsUi.link}`}>
             ← Back to HBAR Skills agents
           </Link>
@@ -772,6 +864,12 @@ function YieldScoutRunner({ name }: { name: string }) {
         )}
 
         {report && <YieldScoutReportTable report={report} />}
+
+        <PaymentSummary
+          amountHbar={lastResult?.amountHbar}
+          recipientId={lastResult?.recipientId ?? lastResult?.recipient}
+          txId={report?.paymentTxId ?? lastResult?.txId}
+        />
 
         <HashScanLinks
           txId={report?.paymentTxId ?? lastResult?.txId}

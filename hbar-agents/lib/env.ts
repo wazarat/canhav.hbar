@@ -1,3 +1,5 @@
+import { getYieldScoutWorkerId } from "./hedera-client";
+
 export type EnvCheckStatus = "configured" | "missing" | "fallback";
 
 export interface HbarEnvChecks {
@@ -21,6 +23,39 @@ function isSet(name: string): boolean {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+export function isSaucerSwapConfigured(): boolean {
+  return isSet("SAUCERSWAP_API_KEY");
+}
+
+export const SAUCERSWAP_UNAVAILABLE_REASON =
+  "SAUCERSWAP_API_KEY not configured — swap demo unavailable";
+
+export interface YieldScoutReadiness {
+  ready: boolean;
+  workerAccount: "configured" | "fallback_self_transfer";
+  saucerswap: EnvCheckStatus;
+}
+
+export function getYieldScoutReadiness(
+  checks: HbarEnvChecks
+): YieldScoutReadiness {
+  const operatorId = process.env.HEDERA_OPERATOR_ID?.trim();
+  const workerId = getYieldScoutWorkerId();
+  const hasDedicatedWorker =
+    isSet("HBAR_YIELD_SCOUT_WORKER_ID") &&
+    operatorId != null &&
+    workerId !== operatorId;
+
+  return {
+    ready:
+      checks.openai === "configured" &&
+      checks.hedera === "configured" &&
+      checks.auditTopic === "configured",
+    workerAccount: hasDedicatedWorker ? "configured" : "fallback_self_transfer",
+    saucerswap: checks.saucerswap,
+  };
+}
+
 export function validateHbarEnv(options?: {
   throwOnMissingRequired?: boolean;
 }): HbarEnvValidation {
@@ -31,7 +66,7 @@ export function validateHbarEnv(options?: {
   if (!isSet("HEDERA_OPERATOR_ID")) missingRequired.push("HEDERA_OPERATOR_ID");
   if (!isSet("HEDERA_OPERATOR_KEY")) missingRequired.push("HEDERA_OPERATOR_KEY");
 
-  if (!isSet("SAUCERSWAP_API_KEY")) {
+  if (!isSaucerSwapConfigured()) {
     warnings.push(
       "SAUCERSWAP_API_KEY is not set — swap / write demo routes will be degraded"
     );
@@ -70,7 +105,7 @@ export function validateHbarEnv(options?: {
       isSet("HEDERA_OPERATOR_ID") && isSet("HEDERA_OPERATOR_KEY")
         ? "configured"
         : "missing",
-    saucerswap: isSet("SAUCERSWAP_API_KEY") ? "configured" : "missing",
+    saucerswap: isSaucerSwapConfigured() ? "configured" : "missing",
     auditTopic: isSet("HBAR_AUDIT_TOPIC_ID") ? "configured" : "missing",
     registry:
       hasRegistry || hasSwapAgentId

@@ -13,6 +13,7 @@ import type {
   SwapQuotePreview,
 } from "@hbar/agents/swap-executor/types";
 import type { PayResponse } from "./execute-agent-payment";
+import { isSaucerSwapConfigured, SAUCERSWAP_UNAVAILABLE_REASON } from "./env";
 import {
   processSwapToolResults,
   parseQuoteFromText,
@@ -77,6 +78,15 @@ export async function executeSwapExecutorRun(
       status: "blocked",
       policy: "configuration",
       reason: "OPENAI_API_KEY not configured",
+      policyState: "within policy",
+    };
+  }
+
+  if (!isSaucerSwapConfigured()) {
+    return {
+      status: "blocked",
+      policy: "configuration",
+      reason: SAUCERSWAP_UNAVAILABLE_REASON,
       policyState: "within policy",
     };
   }

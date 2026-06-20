@@ -27,6 +27,8 @@ export type YieldScoutRunResponse =
       status: "success";
       report: YieldScoutReport;
       txId?: string;
+      recipientId?: string;
+      amountHbar?: number;
       policyState: string;
     }
   | PayResponse;
@@ -112,12 +114,27 @@ export async function executeYieldScoutRun(
     });
 
     let paymentTxId: string | undefined;
+    let paymentRecipientId: string | undefined;
+    let paymentAmountHbar: number | undefined;
     for (const step of result.steps ?? []) {
       for (const tr of step.toolResults ?? []) {
-        const raw = (tr as { result?: { raw?: { payment?: { txId?: string } } } })
-          .result?.raw;
+        const raw = (
+          tr as {
+            result?: {
+              raw?: {
+                payment?: {
+                  txId?: string;
+                  recipientId?: string;
+                  amountHbar?: number;
+                };
+              };
+            };
+          }
+        ).result?.raw;
         if (raw?.payment?.txId) {
           paymentTxId = raw.payment.txId;
+          paymentRecipientId = raw.payment.recipientId;
+          paymentAmountHbar = raw.payment.amountHbar;
         }
       }
     }
@@ -136,6 +153,8 @@ export async function executeYieldScoutRun(
       status: "success",
       report,
       txId: paymentTxId ?? req.paymentTxId,
+      recipientId: paymentRecipientId ?? counterparty.allowlist[0],
+      amountHbar: paymentAmountHbar ?? amountHbar,
       policyState: "within policy",
     };
   } catch (error) {

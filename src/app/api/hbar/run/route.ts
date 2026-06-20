@@ -21,6 +21,7 @@ import type { LpHealthIntake } from "@hbar/agents/lp-health/types";
 import type { PriceVerifierIntake } from "@hbar/agents/price-feed-verifier/types";
 import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
 import { withPolicySession } from "@hbar/lib/policy-session-sync";
+import { isSaucerSwapConfigured, SAUCERSWAP_UNAVAILABLE_REASON } from "@hbar/lib/env";
 
 export const maxDuration = 60;
 
@@ -110,6 +111,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (!isSaucerSwapConfigured()) {
+      return NextResponse.json({
+        status: "blocked",
+        policy: "configuration",
+        reason: SAUCERSWAP_UNAVAILABLE_REASON,
+        policyState: "within policy",
+      });
+    }
+
     if (!intake || !("tokenIn" in intake) || !intake.tokenIn || !intake.tokenOut || !intake.amountIn) {
       return NextResponse.json(
         { error: "intake with tokenIn, tokenOut, amountIn required" },
@@ -174,6 +184,15 @@ export async function POST(req: NextRequest) {
         { error: "OPENAI_API_KEY not configured" },
         { status: 500 }
       );
+    }
+
+    if (!isSaucerSwapConfigured()) {
+      return NextResponse.json({
+        status: "blocked",
+        policy: "configuration",
+        reason: SAUCERSWAP_UNAVAILABLE_REASON,
+        policyState: "within policy",
+      });
     }
 
     const pvIntake = intake as PriceVerifierIntake | undefined;

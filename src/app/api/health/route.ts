@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateHbarEnv } from "@hbar/lib/env";
+import { getYieldScoutReadiness, validateHbarEnv } from "@hbar/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,7 @@ export async function GET() {
     network: "testnet",
     time: new Date().toISOString(),
     checks: validation.checks,
+    yieldScout: getYieldScoutReadiness(validation.checks),
     warnings: validation.warnings.length > 0 ? validation.warnings : undefined,
   });
 }

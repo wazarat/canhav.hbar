@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AGENT_CATALOG, type MergedCatalogEntry } from "@hbar/lib/agent-catalog";
+import type { MergedCatalogEntry } from "@hbar/lib/agent-catalog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { hbarSkillsUi } from "@hbar/lib/ui-tokens";
@@ -21,6 +21,7 @@ function getSessionId(): string {
 
 export default function HbarAgentsPage() {
   const [customAgents, setCustomAgents] = useState<CustomAgentSpec[]>([]);
+  const [builtinAgents, setBuiltinAgents] = useState<MergedCatalogEntry[]>([]);
 
   useEffect(() => {
     const sessionId = getSessionId();
@@ -32,17 +33,17 @@ export default function HbarAgentsPage() {
         setCustomAgents(data.agents ?? [])
       )
       .catch(() => setCustomAgents([]));
+
+    fetch("/api/hbar/catalog")
+      .then((r) => (r.ok ? r.json() : { agents: [] }))
+      .then((data: { agents?: MergedCatalogEntry[] }) =>
+        setBuiltinAgents(data.agents ?? [])
+      )
+      .catch(() => setBuiltinAgents([]));
   }, []);
 
   const mergedCatalog: MergedCatalogEntry[] = [
-    ...AGENT_CATALOG.map((a) => ({
-      id: a.id,
-      name: a.name,
-      description: a.description,
-      status: a.status,
-      milestone: a.milestone,
-      isCustom: false,
-    })),
+    ...builtinAgents,
     ...customAgents.map((spec) => ({
       id: spec.id,
       name: spec.name,
@@ -129,7 +130,7 @@ export default function HbarAgentsPage() {
                   </Link>
                 ) : (
                   <span className={`text-sm ${hbarSkillsUi.text.muted}`}>
-                    Coming soon
+                    Demo unavailable — API key pending
                   </span>
                 )}
               </CardContent>
