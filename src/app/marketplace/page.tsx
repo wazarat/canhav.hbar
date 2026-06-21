@@ -59,6 +59,29 @@ export default function MarketplacePage() {
             </div>
           </div>
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="group border-primary/20 bg-card/40 hover:border-primary/40 hover:bg-card/60 transition-colors">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base">Bonzo Vault Strategist</CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    Beta
+                  </Badge>
+                </div>
+                <CardDescription className="text-sm line-clamp-2">
+                  Survey-driven vault keeper with deterministic policy gates and
+                  HCS audit trail.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  href="/agents/bonzo-vault"
+                  className="inline-flex items-center text-sm font-medium text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  Configure strategy
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+              </CardContent>
+            </Card>
             {hbarActiveAgents.map((agent) => (
               <Card
                 key={agent.id}

@@ -50,6 +50,20 @@ export const AGENT_CATALOG = [
     status: "active" as const,
     milestone: "M1",
   },
+  {
+    id: "bonzo-vault-strategist",
+    name: "Bonzo Vault Strategist",
+    description:
+      "Survey-driven vault keeper: policy-gated deposits, harvests, and emergency actions with HCS audit",
+    capabilities: [
+      "strategy-survey",
+      "policy-gate",
+      "keeper-run",
+      "hcs-audit",
+    ] as const,
+    status: "active" as const,
+    milestone: "M5",
+  },
 ] as const;
 
 export const SAUCERSWAP_DEPENDENT_AGENT_IDS = [
@@ -68,6 +82,7 @@ export type MergedCatalogEntry = {
   description: string;
   status: "active" | "coming_soon";
   milestone?: string;
+  capabilities?: readonly string[];
   isCustom?: boolean;
 };
 
@@ -85,6 +100,9 @@ export function getResolvedAgentCatalog(): MergedCatalogEntry[] {
         description: `${entry.description}${SAUCERSWAP_UNAVAILABLE_SUFFIX}`,
         status: "coming_soon" as const,
         milestone: entry.milestone,
+        ...("capabilities" in entry && entry.capabilities
+          ? { capabilities: entry.capabilities }
+          : {}),
       };
     }
 
@@ -94,6 +112,9 @@ export function getResolvedAgentCatalog(): MergedCatalogEntry[] {
       description: entry.description,
       status: entry.status,
       milestone: entry.milestone,
+      ...("capabilities" in entry && entry.capabilities
+        ? { capabilities: entry.capabilities }
+        : {}),
     };
   });
 }

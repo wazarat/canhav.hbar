@@ -47,4 +47,7 @@ next-env.d.ts
 
 # HVAR local dev log (never commit)
 .hvar-dev-plan.md
+
+# Local agent planning docs (never commit)
+.local/
 .pnpm-store/

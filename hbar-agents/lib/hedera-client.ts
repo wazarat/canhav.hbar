@@ -124,3 +124,12 @@ export function getPriceFeedVerifierWorkerId(): string {
     "0.0.0"
   );
 }
+
+export function getBonzoVaultStrategistWorkerId(): string {
+  return (
+    process.env.HBAR_BONZO_VAULT_STRATEGIST_WORKER_ID ||
+    process.env.HBAR_STUB_WORKER_ID ||
+    process.env.HEDERA_OPERATOR_ID ||
+    "0.0.0"
+  );
+}

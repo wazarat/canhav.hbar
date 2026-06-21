@@ -262,5 +262,28 @@ function getDefaultAgents() {
         ],
       },
     },
+    {
+      id: "default-bonzo-vault-strategist",
+      name: "Bonzo Vault Strategist",
+      description:
+        "Survey-driven autonomous Bonzo vault keeper. Configure deterministic policies, provision a strategy, and run the keeper loop with HCS audit trail.",
+      capabilities: ["strategy-survey", "policy-gate", "keeper-run", "hcs-audit"],
+      pricingUsd: "0.01",
+      capability: "bonzo-vault-strategist",
+      status: "active",
+      rating: 4.7,
+      reviewCount: 0,
+      intakeSchema: {
+        fields: [
+          {
+            name: "strategyId",
+            type: "string",
+            required: false,
+            description: "Existing strategy DB id or strat_bonzo_… id (optional — use survey UI to create)",
+            placeholder: "strat_bonzo_…",
+          },
+        ],
+      },
+    },
   ];
 }

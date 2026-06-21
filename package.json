@@ -13,7 +13,9 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "hbar:create-audit-topic": "dotenv -e .env.local -- tsx hbar-agents/scripts/create-audit-topic.ts"
+    "hbar:create-audit-topic": "dotenv -e .env.local -- tsx hbar-agents/scripts/create-audit-topic.ts",
+    "bonzo:policy-test": "tsx src/lib/bonzo/policies/policy-tests.ts",
+    "bonzo:vault-smoke": "dotenv -e .env.local -- tsx scripts/bonzo-vault-smoke-test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.0",

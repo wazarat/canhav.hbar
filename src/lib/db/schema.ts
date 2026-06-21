@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { CustomAgentSpec } from "@hbar/lib/custom-agent";
 import type { PolicySessionSnapshot } from "@hbar/lib/policy-state";
+import type { StrategyConfig } from "@/lib/bonzo/strategy-config.schema";
 
 export const jobStatusEnum = pgEnum("job_status", [
   "pending_fund",
@@ -102,3 +103,43 @@ export const customAgents = pgTable(
   },
   (table) => [primaryKey({ columns: [table.id, table.sessionId] })]
 );
+
+export const strategyStatusEnum = pgEnum("strategy_status", [
+  "draft",
+  "active",
+  "paused",
+  "exited",
+]);
+
+export const strategies = pgTable("strategies", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id),
+  vaultType: text("vault_type").notNull(),
+  vaultAddress: text("vault_address"),
+  config: jsonb("config").$type<StrategyConfig>().notNull(),
+  hcsTopicId: text("hcs_topic_id"),
+  status: strategyStatusEnum("status").default("draft").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const vaultPolicyState = pgTable("vault_policy_state", {
+  strategyId: uuid("strategy_id")
+    .references(() => strategies.id)
+    .primaryKey(),
+  deployedAmount: numeric("deployed_amount", { precision: 30, scale: 8 })
+    .default("0")
+    .notNull(),
+  lastHarvestAt: timestamp("last_harvest_at"),
+  isPaused: text("is_paused").default("false").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const strategyRuns = pgTable("strategy_runs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  strategyId: uuid("strategy_id").references(() => strategies.id),
+  decision: text("decision").notNull(),
+  policyResult: jsonb("policy_result"),
+  txId: text("tx_id"),
+  hcsSequence: text("hcs_sequence"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

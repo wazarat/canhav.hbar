@@ -16,7 +16,8 @@ export type AgentCapability =
   | "compliance-checker"
   | "code-generator"
   | "bridge-advisor"
-  | "ai-studio";
+  | "ai-studio"
+  | "bonzo-vault-strategist";
 
 export async function executeAgent(
   capability: AgentCapability,
@@ -61,6 +62,26 @@ export async function executeAgent(
       return runGenericAgent("bridge-advisor", intake);
     case "ai-studio":
       return "AI Studio uses a streaming interface. Visit /ai-studio to interact with the Hedera Agent Kit v3 in real time.";
+    case "bonzo-vault-strategist": {
+      const strategyId = intake.strategyId
+        ? String(intake.strategyId)
+        : undefined;
+      return [
+        "Bonzo Vault Strategist uses a dedicated survey and keeper pipeline (not generic LLM chat).",
+        "",
+        "Flow:",
+        "1. Open /agents/bonzo-vault to configure StrategyConfig (5-step survey)",
+        "2. Provision persists strategy + vault_policy_state; HCS audit on HBAR_AUDIT_TOPIC_ID",
+        "3. Run keeper via POST /api/agents/bonzo-vault/run with { strategyId }",
+        "",
+        "See /skills/defi/bonzo-vaults.SKILL.md for vault mechanics and API details.",
+        strategyId
+          ? `Provided strategyId: ${strategyId} — trigger keeper with the run API.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    }
     default:
       throw new Error(`Unknown agent capability: ${capability}`);
   }

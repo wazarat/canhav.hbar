@@ -11,6 +11,7 @@ import { yieldScoutAgentConfig } from "../agents/yield-scout/config";
 import { swapExecutorAgentConfig } from "../agents/swap-executor/config";
 import { lpHealthAgentConfig } from "../agents/lp-health/config";
 import { priceFeedVerifierAgentConfig } from "../agents/price-feed-verifier/config";
+import { bonzoVaultStrategistAgentConfig } from "../agents/bonzo-vault-strategist/config";
 import type { BudgetConfig } from "./policy-state";
 import type { CustomAgentSpec } from "./custom-agent";
 import { dataSourceLabels } from "./custom-agent";
@@ -21,6 +22,7 @@ export type HbarAgentId =
   | "swap-executor"
   | "lp-health"
   | "price-feed-verifier"
+  | "bonzo-vault-strategist"
   | "custom";
 
 export interface AgentConfigBundle {
@@ -36,6 +38,7 @@ const TASK_PRICES: Record<HbarAgentId, number> = {
   "swap-executor": 1,
   "lp-health": 1,
   "price-feed-verifier": 1,
+  "bonzo-vault-strategist": 0.01,
   custom: 1,
 };
 
@@ -49,9 +52,11 @@ export function getAgentConfig(agentId: HbarAgentId): AgentConfigBundle {
           ? lpHealthAgentConfig
           : agentId === "price-feed-verifier"
             ? priceFeedVerifierAgentConfig
-            : agentId === "custom"
-              ? { id: "custom" as const, name: "Custom Agent", taskType: "read" }
-              : stubAgentConfig;
+            : agentId === "bonzo-vault-strategist"
+              ? bonzoVaultStrategistAgentConfig
+              : agentId === "custom"
+                ? { id: "custom" as const, name: "Custom Agent", taskType: "read" }
+                : stubAgentConfig;
   return {
     id: agentId,
     name: config.name,
@@ -73,7 +78,9 @@ export function getPluginsForAgent(
           ? [hbarStubPlugin, bonzoReadonlyPlugin]
           : agentId === "price-feed-verifier"
             ? [hbarStubPlugin, pythPlugin, saucerswapQuoteOnlyPlugin]
-            : [hbarStubPlugin];
+            : agentId === "bonzo-vault-strategist"
+              ? [hbarStubPlugin, bonzoReadonlyPlugin]
+              : [hbarStubPlugin];
 
   return [...base, ...(extra ?? [])];
 }

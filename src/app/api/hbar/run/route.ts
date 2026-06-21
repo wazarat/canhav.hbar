@@ -13,6 +13,7 @@ import { executeYieldScoutRun } from "@hbar/lib/execute-yield-scout-run";
 import { executeSwapExecutorRun } from "@hbar/lib/execute-swap-executor-run";
 import { executeLpHealthRun } from "@hbar/lib/execute-lp-health-run";
 import { executePriceFeedVerifierRun } from "@hbar/lib/execute-price-feed-verifier-run";
+import { executeBonzoVaultRun } from "@hbar/lib/execute-bonzo-vault-run";
 import { executeCustomRun } from "@hbar/lib/execute-custom-run";
 import type { BudgetConfig, ApprovalConfig } from "@hbar/lib/policy-state";
 import type { HbarAgentId } from "@hbar/lib/agent-config";
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
     spec,
     userMessage,
     swapIntake,
+    strategyId,
   } = body as {
     messages?: CoreMessage[];
     goal?: string;
@@ -75,6 +77,7 @@ export async function POST(req: NextRequest) {
     spec?: CustomAgentSpec;
     userMessage?: string;
     swapIntake?: SwapExecutorIntake;
+    strategyId?: string;
   };
 
   if (agentId === "yield-scout") {
@@ -215,6 +218,18 @@ export async function POST(req: NextRequest) {
       paymentTxId,
     });
 
+    return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });
+  }
+
+  if (agentId === "bonzo-vault-strategist") {
+    if (!strategyId?.trim()) {
+      return NextResponse.json(
+        { error: "strategyId required for bonzo-vault-strategist" },
+        { status: 400 }
+      );
+    }
+
+    const result = await executeBonzoVaultRun({ strategyId: strategyId.trim() });
     return NextResponse.json({ ...result, hashScanTopicUrl: hashScanTopicUrl() });
   }
 
