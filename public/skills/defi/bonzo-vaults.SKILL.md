@@ -84,6 +84,14 @@ curl -X POST http://localhost:3000/api/agents/bonzo-vault/run \
 - hbar-agents bridge: `hbar-agents/lib/execute-bonzo-vault-run.ts`
 - Catalog id: `bonzo-vault-strategist`
 
-## Phase 2 (blocked)
+## Phase 2 (testnet chain mode)
 
-Real on-chain vault ops require testnet `BonzoVaultV7Factory` addresses in `src/lib/bonzo/bonzo-addresses.ts` and `BONZO_VAULT_ADAPTER_MODE=chain`.
+Self-deployed mock vault factory on Hedera testnet (Track 2C). Real Bonzo mainnet vaults use addresses in `src/lib/bonzo/bonzo-addresses.ts`.
+
+```bash
+pnpm contracts:deploy:bonzo-vault   # prints BONZO_VAULT_FACTORY + BONZO_SMOKE_STRATEGY_EVM
+pnpm bonzo:vault-smoke              # clone → deposit → withdraw → harvest
+pnpm bonzo:vault-e2e                # provision + keeper + HCS (set BONZO_VAULT_ADAPTER_MODE=chain)
+```
+
+Set `BONZO_VAULT_ADAPTER_MODE=chain` after smoke passes. ERC20 `approve` is wired in `vault-adapter.ts`; HTS associate for `isHederaToken=true` vaults is future work.

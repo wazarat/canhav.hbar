@@ -6,7 +6,7 @@
   "crons": [
     {
       "path": "/api/agents/bonzo-vault/run",
-      "schedule": "*/15 * * * *"
+      "schedule": "0 12 * * *"
     }
   ],
   "headers": [

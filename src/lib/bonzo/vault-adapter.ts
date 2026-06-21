@@ -27,6 +27,12 @@ const PPS_SCALE = BigInt("1000000000000000000");
 const vaultIface = new Interface(VAULT_ABI as unknown as string[]);
 const factoryIface = new Interface(VAULT_FACTORY_ABI as unknown as string[]);
 const stratIface = new Interface(STRATEGY_ABI as unknown as string[]);
+const erc20Iface = new Interface([
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function mint(address to, uint256 amount)",
+] as const);
 
 function contractId(evm: string): ContractId {
   const normalized = evm.startsWith("0x") ? evm : `0x${evm}`;
@@ -48,6 +54,10 @@ function resolveAgentEvmAddress(): string {
   if (operatorId.startsWith("0x")) return operatorId;
   const solidity = AccountId.fromString(operatorId).toSolidityAddress();
   return solidity.startsWith("0x") ? solidity : `0x${solidity}`;
+}
+
+function resolveOperatorEvmAddress(): string {
+  return resolveAgentEvmAddress();
 }
 
 function decodeProxyCreated(record: TransactionRecord): string {
@@ -147,10 +157,41 @@ export class BonzoVaultAdapter implements IVaultAdapter {
     amountAssets: bigint
   ): Promise<{ txId?: string }> {
     void config;
+    await this.ensureErc20Allowance(vaultEvm, amountAssets);
     const { txId } = await this.exec(vaultEvm, vaultIface, "deposit", [
       amountAssets,
     ]);
     return { txId };
+  }
+
+  /** Mint mock want tokens when BONZO_SMOKE_WANT_TOKEN is set (testnet smoke only). */
+  async ensureMockWantBalance(amount: bigint): Promise<void> {
+    const wantToken = process.env.BONZO_SMOKE_WANT_TOKEN?.trim();
+    if (!wantToken) return;
+    const owner = resolveOperatorEvmAddress();
+    const balance = await this.callView(wantToken, erc20Iface, "balanceOf", [
+      owner,
+    ]);
+    if (balance >= amount) return;
+    await this.exec(wantToken, erc20Iface, "mint", [owner, amount * BigInt(2)]);
+  }
+
+  private async ensureErc20Allowance(
+    vaultEvm: string,
+    amountAssets: bigint
+  ): Promise<void> {
+    const wantToken = await this.callViewAddress(vaultEvm, vaultIface, "want", []);
+    const owner = resolveOperatorEvmAddress();
+    const vaultNorm = vaultEvm.startsWith("0x") ? vaultEvm : `0x${vaultEvm}`;
+    const allowance = await this.callView(wantToken, erc20Iface, "allowance", [
+      owner,
+      vaultNorm,
+    ]);
+    if (allowance >= amountAssets) return;
+    const max = BigInt(
+      "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    );
+    await this.exec(wantToken, erc20Iface, "approve", [vaultNorm, max]);
   }
 
   async withdrawFromVault(
@@ -207,14 +248,58 @@ export class BonzoVaultAdapter implements IVaultAdapter {
     fn: string,
     args: unknown[]
   ): Promise<bigint> {
+    const raw = await this.callViewRaw(evm, iface, fn, args);
+    if (typeof raw === "bigint") return raw;
+    throw new Error(`Expected uint256 from ${fn}, got ${typeof raw}`);
+  }
+
+  private async callViewAddress(
+    evm: string,
+    iface: Interface,
+    fn: string,
+    args: unknown[] = []
+  ): Promise<string> {
+    const raw = await this.callViewRaw(evm, iface, fn, args);
+    if (typeof raw === "string") {
+      return raw.startsWith("0x") ? raw : `0x${raw}`;
+    }
+    throw new Error(`Expected address from ${fn}`);
+  }
+
+  private async callViewRaw(
+    evm: string,
+    iface: Interface,
+    fn: string,
+    args: unknown[]
+  ): Promise<bigint | string> {
     const data = iface.encodeFunctionData(fn, args);
     const q = new ContractCallQuery()
       .setContractId(contractId(evm))
       .setGas(150_000)
       .setFunctionParameters(Buffer.from(data.slice(2), "hex"));
     const res = await q.execute(this.client);
-    return decodeUint256(fn, iface, res);
+    return decodeViewResult(fn, iface, res);
   }
+}
+
+function decodeViewResult(
+  fn: string,
+  iface: Interface,
+  result: ContractFunctionResult
+): bigint | string {
+  const bytes = result.bytes;
+  const hex =
+    typeof bytes === "string"
+      ? bytes
+      : `0x${Buffer.from(bytes).toString("hex")}`;
+  const decoded = iface.decodeFunctionResult(fn, hex);
+  const first = decoded[0];
+  if (typeof first === "bigint") return first;
+  if (typeof first === "number") return BigInt(first);
+  const asString = String(first);
+  if (asString.startsWith("0x") && asString.length === 42) return asString;
+  if (/^0x[0-9a-fA-F]{40}$/.test(asString)) return asString;
+  return BigInt(asString);
 }
 
 function decodeUint256(
@@ -222,13 +307,9 @@ function decodeUint256(
   iface: Interface,
   result: ContractFunctionResult
 ): bigint {
-  const bytes = result.bytes;
-  const hex =
-    typeof bytes === "string"
-      ? bytes
-      : `0x${Buffer.from(bytes).toString("hex")}`;
-  const [decoded] = iface.decodeFunctionResult(fn, hex);
-  return BigInt(decoded.toString());
+  const raw = decodeViewResult(fn, iface, result);
+  if (typeof raw === "bigint") return raw;
+  throw new Error(`Expected uint256 from ${fn}`);
 }
 
 let _chainAdapter: BonzoVaultAdapter | null = null;

@@ -34,7 +34,7 @@ export const BONZO_INFRA: Record<
   }
 > = {
   testnet: {
-    vaultFactory: "0x0000000000000000000000000000000000000000",
+    vaultFactory: "0x002B70a5B92a1800377b374887dB6Fad88Fa94A9",
     supraOracle: "0x0000000000000000000000000000000000000000",
     approvedVaults: [],
   },

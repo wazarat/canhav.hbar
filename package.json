@@ -10,12 +10,14 @@
     "contracts:build": "cd contracts && forge build",
     "contracts:test": "cd contracts && forge test -vvv",
     "contracts:deploy:testnet": "cd contracts && forge script script/Deploy.sol --rpc-url https://testnet.hashio.io/api --broadcast --slow --verify --verifier sourcify --verifier-url https://server-verify.hashscan.io/api --chain-id 296",
+    "contracts:deploy:bonzo-vault": "cd contracts && forge script script/DeployBonzoVault.sol --rpc-url https://testnet.hashio.io/api --broadcast --slow --chain-id 296",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "hbar:create-audit-topic": "dotenv -e .env.local -- tsx hbar-agents/scripts/create-audit-topic.ts",
     "bonzo:policy-test": "tsx src/lib/bonzo/policies/policy-tests.ts",
-    "bonzo:vault-smoke": "dotenv -e .env.local -- tsx scripts/bonzo-vault-smoke-test.ts"
+    "bonzo:vault-smoke": "dotenv -e .env.local -- tsx scripts/bonzo-vault-smoke-test.ts",
+    "bonzo:vault-e2e": "dotenv -e .env.local -- tsx scripts/bonzo-vault-e2e-test.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.3.0",

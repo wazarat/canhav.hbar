@@ -93,7 +93,7 @@ async function main() {
       name: "SmokeVault",
       symbol: "smokeBVT",
       approvalDelay: 0,
-      isHederaToken: true,
+      isHederaToken: false,
     });
     ok(`cloned vault ${vaultEvm}`);
   } else {
@@ -101,48 +101,31 @@ async function main() {
   }
 
   const config = minimalConfig(vaultEvm, userId);
-  const depositAmount = BigInt(process.env.BONZO_SMOKE_DEPOSIT_AMOUNT ?? "1000");
+  const depositAmount = BigInt(
+    process.env.BONZO_SMOKE_DEPOSIT_AMOUNT ?? "1000000000000000000"
+  );
 
   const before = await adapter.getVaultHealth(vaultEvm, BigInt(0));
   ok(`pps before ${before.pricePerFullShare.toString()}`);
 
-  try {
-    const dep = await adapter.depositToVault(config, vaultEvm, depositAmount);
-    ok(`deposit tx ${dep.txId ?? "n/a"}`);
-  } catch (e) {
-    console.warn(
-      `[bonzo:vault-smoke] deposit skipped (HTS associate/approve may be required): ${e instanceof Error ? e.message : e}`
-    );
-  }
+  await adapter.ensureMockWantBalance(depositAmount);
+
+  const dep = await adapter.depositToVault(config, vaultEvm, depositAmount);
+  ok(`deposit tx ${dep.txId ?? "n/a"}`);
 
   const after = await adapter.getVaultHealth(vaultEvm, BigInt(0));
   ok(`pps after ${after.pricePerFullShare.toString()}`);
 
-  try {
-    const shares = adapter.assetsToShares(depositAmount, after.pricePerFullShare);
-    if (shares > BigInt(0)) {
-      const wd = await adapter.withdrawFromVault(config, vaultEvm, shares);
-      ok(`withdraw tx ${wd.txId ?? "n/a"}`);
-    }
-  } catch (e) {
-    console.warn(
-      `[bonzo:vault-smoke] withdraw skipped: ${e instanceof Error ? e.message : e}`
-    );
+  const shares = adapter.assetsToShares(depositAmount, after.pricePerFullShare);
+  if (shares > BigInt(0)) {
+    const wd = await adapter.withdrawFromVault(config, vaultEvm, shares);
+    ok(`withdraw tx ${wd.txId ?? "n/a"}`);
   }
 
-  try {
-    const hv = await adapter.harvest(config, strategyEvm);
-    ok(`harvest tx ${hv.txId ?? "n/a"}`);
-  } catch (e) {
-    console.warn(
-      `[bonzo:vault-smoke] harvest skipped: ${e instanceof Error ? e.message : e}`
-    );
-  }
+  const hv = await adapter.harvest(config, strategyEvm);
+  ok(`harvest tx ${hv.txId ?? "n/a"}`);
 
-  console.log("\nSmoke test finished (reads + best-effort writes).\n");
-  console.log(
-    "Note: deposit/withdraw may fail until HTS associate/approve is wired. Configure addresses and re-run."
-  );
+  console.log("\nSmoke test finished.\n");
 }
 
 main().catch((e) => {
