@@ -29,8 +29,8 @@ interface BonzoReserveRaw {
   total_liquidity_usd?: { usd_display: string };
   available_liquidity_usd?: { usd_display: string };
   total_debt_usd?: { usd_display: string };
-  is_active: boolean;
-  is_frozen: boolean;
+  is_active: boolean | null;
+  is_frozen: boolean | null;
   borrowing_enabled: boolean;
 }
 
@@ -67,7 +67,7 @@ export async function fetchBonzoReserves(): Promise<BonzoReserveSummary[]> {
     }
     const data = (await response.json()) as { reserves: BonzoReserveRaw[] };
     return (data.reserves ?? [])
-      .filter((r) => r.is_active && !r.is_frozen)
+      .filter((r) => (r.is_active ?? true) && !(r.is_frozen ?? false))
       .map((r) => ({
         symbol: r.symbol,
         name: r.name,
@@ -76,7 +76,7 @@ export async function fetchBonzoReserves(): Promise<BonzoReserveSummary[]> {
         utilization: r.utilization_rate,
         liquidityUsd: parseUsd(r.available_liquidity_usd),
         totalLiquidityUsd: parseUsd(r.total_liquidity_usd),
-        isActive: r.is_active,
+        isActive: r.is_active ?? true,
       }));
   } finally {
     clearTimeout(timeoutId);

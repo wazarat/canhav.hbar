@@ -34,9 +34,6 @@ function hashScanTopicUrl() {
 
 export async function POST(req: NextRequest) {
   try {
-  // #region agent log
-  fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'run/route.ts:POST',message:'run route entered',data:{},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
-  // #endregion
   const body = await req.json();
   const sessionId =
     (body.sessionId as string | undefined) ??
@@ -81,9 +78,6 @@ export async function POST(req: NextRequest) {
   };
 
   if (agentId === "yield-scout") {
-    // #region agent log
-    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'run/route.ts:yield-scout',message:'yield-scout branch',data:{sessionId,amountHbar},timestamp:Date.now(),hypothesisId:'H4-H5'})}).catch(()=>{});
-    // #endregion
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "OPENAI_API_KEY not configured" },
@@ -298,9 +292,6 @@ export async function POST(req: NextRequest) {
   });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // #region agent log
-    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'run/route.ts:catch',message:'run route caught error',data:{error:message},timestamp:Date.now(),hypothesisId:'H1-H4-H5'})}).catch(()=>{});
-    // #endregion
     console.error("[/api/hbar/run] unhandled error:", err);
     return NextResponse.json(
       { status: "error", policyState: "error", reason: message },

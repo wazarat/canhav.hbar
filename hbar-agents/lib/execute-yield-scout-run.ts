@@ -156,10 +156,6 @@ export async function executeYieldScoutRun(
   const amountHbar = req.amountHbar ?? YIELD_SCOUT_TASK_PRICE_HBAR;
   const counterparty = getYieldScoutCounterpartyConfig();
 
-  // #region agent log
-  fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:pre-runtime',message:'before buildHbarRuntime',data:{sessionId:req.sessionId,amountHbar},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
-  // #endregion
-
   const { toolkit, spendPolicy } = buildHbarRuntime({
     sessionId: req.sessionId,
     budget: req.budget,
@@ -170,9 +166,6 @@ export async function executeYieldScoutRun(
   });
 
   const tools = normalizeHederaToolsForAiSdk(toolkit.getTools());
-  // #region agent log
-  fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:tools-normalized',message:'tools normalized for AI SDK',data:{toolNames:Object.keys(tools),hasParameters:Object.fromEntries(Object.entries(tools).map(([k,v])=>[k,!!(v as {parameters?:unknown}).parameters]))},timestamp:Date.now(),hypothesisId:'H6',runId:'post-fix'})}).catch(()=>{});
-  // #endregion
   const messages: CoreMessage[] = [
     {
       role: "user",
@@ -246,7 +239,6 @@ export async function executeYieldScoutRun(
     const llmReport = parseYieldScoutReport(result.text, resolvedTxId);
     const bonzoFromSteps = extractBonzoReservesFromSteps(result.steps);
     let report: YieldScoutReport;
-    let reportSource: "llm" | "server-fallback" | "empty-fallback";
 
     if (
       llmReport &&
@@ -254,16 +246,13 @@ export async function executeYieldScoutRun(
       !(paymentTxId && isPolicyFailureReport(llmReport))
     ) {
       report = llmReport;
-      reportSource = "llm";
     } else if (bonzoFromSteps?.length) {
       report = buildServerYieldScoutReport(bonzoFromSteps, resolvedTxId);
-      reportSource = "server-fallback";
     } else {
       try {
         const reserves = await fetchBonzoReserves();
         if (reserves.length > 0) {
           report = buildServerYieldScoutReport(reserves, resolvedTxId);
-          reportSource = "server-fallback";
         } else {
           report = {
             recommendation:
@@ -272,7 +261,6 @@ export async function executeYieldScoutRun(
             paymentTxId: resolvedTxId,
             completedAt: new Date().toISOString(),
           };
-          reportSource = "empty-fallback";
         }
       } catch {
         report = {
@@ -284,13 +272,8 @@ export async function executeYieldScoutRun(
           paymentTxId: resolvedTxId,
           completedAt: new Date().toISOString(),
         };
-        reportSource = "empty-fallback";
       }
     }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:report-built',message:'yield scout report assembled',data:{reportSource,paymentTxId:resolvedTxId,rankedCount:report.ranked.length,llmTextPreview:result.text.slice(0,200)},timestamp:Date.now(),hypothesisId:'H7',runId:'post-fix'})}).catch(()=>{});
-    // #endregion
 
     return {
       status: "success",
@@ -302,9 +285,6 @@ export async function executeYieldScoutRun(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    // #region agent log
-    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:catch',message:'executeYieldScoutRun caught',data:{error:message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
     const policyState = policyStateLabel(req.sessionId);
 
     if (
