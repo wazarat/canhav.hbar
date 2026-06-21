@@ -83,6 +83,10 @@ export async function executeYieldScoutRun(
   const amountHbar = req.amountHbar ?? YIELD_SCOUT_TASK_PRICE_HBAR;
   const counterparty = getYieldScoutCounterpartyConfig();
 
+  // #region agent log
+  fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:pre-runtime',message:'before buildHbarRuntime',data:{sessionId:req.sessionId,amountHbar},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+  // #endregion
+
   const { toolkit } = buildHbarRuntime({
     sessionId: req.sessionId,
     budget: req.budget,
@@ -159,6 +163,9 @@ export async function executeYieldScoutRun(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    // #region agent log
+    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:catch',message:'executeYieldScoutRun caught',data:{error:message},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+    // #endregion
     const policyState = policyStateLabel(req.sessionId);
 
     if (

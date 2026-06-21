@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["hak-hbar-policies"],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -20,6 +19,7 @@ const nextConfig = {
       "@hashgraph/hedera-agent-kit",
       "@hashgraph/hedera-agent-kit-ai-sdk",
       "@hiero-ledger/sdk",
+      "hak-hbar-policies",
     ],
   },
 };

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       agentId?: HbarAgentId;
     };
 
-    return withPolicySession(sessionId, async () => {
+    return await withPolicySession(sessionId, async () => {
     const isYieldScout = agentId === "yield-scout";
     const isSwapExecutor = agentId === "swap-executor";
     const defaults = isYieldScout

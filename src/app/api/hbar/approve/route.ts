@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return withPolicySession(sessionId, async () => {
+  return await withPolicySession(sessionId, async () => {
   const pending = getPendingApproval(approvalId);
   if (!pending) {
     return NextResponse.json({ error: "Approval not found" }, { status: 404 });
