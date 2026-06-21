@@ -63,6 +63,8 @@ Vault deposit/withdraw/harvest may be **mock or dry-run**. Real testnet txs for 
 | `CRON_SECRET` | Protect run route when set |
 | `OPENAI_API_KEY` | Strategist LLM |
 
+**Production demo:** https://www.hbarskills.com/agents/bonzo-vault (`BONZO_VAULT_ADAPTER_MODE=mock` on Vercel Production)
+
 ## API examples
 
 ```bash

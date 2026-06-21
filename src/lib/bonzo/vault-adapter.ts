@@ -302,16 +302,6 @@ function decodeViewResult(
   return BigInt(asString);
 }
 
-function decodeUint256(
-  fn: string,
-  iface: Interface,
-  result: ContractFunctionResult
-): bigint {
-  const raw = decodeViewResult(fn, iface, result);
-  if (typeof raw === "bigint") return raw;
-  throw new Error(`Expected uint256 from ${fn}`);
-}
-
 let _chainAdapter: BonzoVaultAdapter | null = null;
 
 export function getChainVaultAdapter(): BonzoVaultAdapter {
