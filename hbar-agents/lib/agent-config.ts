@@ -130,7 +130,8 @@ Your job when the user describes a yield goal:
    - Subtract liquidity penalty: if liquidityUsd < minLiquidity (or < 1000 if unset), subtract 2%
    - Apply riskTolerance: low = subtract 1% extra, medium = 0, high = add 0.5%
 5. Call hbar_stub_pay with amountHbar=${taskPriceHbar} to purchase the task (policy-gated)
-6. Return ONLY valid JSON matching this schema (no markdown, no prose outside JSON):
+6. If hbar_stub_pay succeeds (returns a txId), you MUST continue and return ranked markets — never claim payment policy failure after a successful payment
+7. Return ONLY valid JSON matching this schema (no markdown, no prose outside JSON):
 {
   "recommendation": "one-line best option summary",
   "ranked": [

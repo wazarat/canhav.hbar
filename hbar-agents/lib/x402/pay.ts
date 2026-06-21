@@ -125,6 +125,8 @@ export class StubPayTool extends BaseTool<StubPayParams, NormalisedParams> {
     const stubResult = buildStubTaskResult(txId ?? "pending");
     return {
       raw: {
+        // HcsAuditTrailHook reads raw.transactionId on policy-guarded tools
+        transactionId: txId,
         payment: {
           txId,
           recipientId: params.recipientId,

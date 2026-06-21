@@ -9,8 +9,18 @@ import {
 import { buildSystemPrompt } from "./agent-config";
 import { getLastApprovalId } from "./policies";
 import { getLatestPolicyEvent } from "./policy-state";
-import type { YieldScoutReport } from "@hbar/agents/yield-scout/types";
+import type {
+  YieldScoutReport,
+  YieldScoutRankedMarket,
+} from "@hbar/agents/yield-scout/types";
 import type { PayResponse } from "./execute-agent-payment";
+import { HBAR_STUB_PAY_TOOL } from "./x402/pay";
+import { logPolicyDecisionToHcs } from "./policies/audit-trail";
+import {
+  BONZO_MARKET_DATA_TOOL,
+  fetchBonzoReserves,
+  type BonzoReserveSummary,
+} from "./plugins/bonzo-readonly";
 
 export interface YieldScoutRunRequest {
   sessionId: string;
@@ -68,6 +78,69 @@ function parseYieldScoutReport(text: string, paymentTxId?: string): YieldScoutRe
   }
 }
 
+function isPolicyFailureReport(report: YieldScoutReport): boolean {
+  return /payment policy|policy restriction/i.test(report.recommendation);
+}
+
+function extractBonzoReservesFromSteps(
+  steps: { toolResults?: unknown[] }[] | undefined
+): BonzoReserveSummary[] | null {
+  for (const step of steps ?? []) {
+    for (const tr of step.toolResults ?? []) {
+      const toolName = (tr as { toolName?: string }).toolName;
+      if (toolName !== BONZO_MARKET_DATA_TOOL) continue;
+      const raw = (tr as { result?: { raw?: { reserves?: BonzoReserveSummary[] } } })
+        .result?.raw;
+      if (Array.isArray(raw?.reserves) && raw.reserves.length > 0) {
+        return raw.reserves;
+      }
+    }
+  }
+  return null;
+}
+
+function buildRankedFromReserves(
+  reserves: BonzoReserveSummary[],
+  riskTolerance: "low" | "medium" | "high" = "low"
+): YieldScoutRankedMarket[] {
+  const minLiquidity = 1000;
+  return reserves
+    .map((r) => {
+      let riskAdjustedApy = r.supplyApy - r.utilization * 0.05;
+      if (r.liquidityUsd < minLiquidity) riskAdjustedApy -= 2;
+      if (riskTolerance === "low") riskAdjustedApy -= 1;
+      else if (riskTolerance === "high") riskAdjustedApy += 0.5;
+      return {
+        rank: 0,
+        protocol: "Bonzo",
+        asset: r.symbol,
+        rawApy: r.supplyApy,
+        riskAdjustedApy,
+        liquidity: r.liquidityUsd,
+        utilization: r.utilization,
+      };
+    })
+    .sort((a, b) => b.riskAdjustedApy - a.riskAdjustedApy)
+    .slice(0, 10)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function buildServerYieldScoutReport(
+  reserves: BonzoReserveSummary[],
+  paymentTxId?: string
+): YieldScoutReport {
+  const ranked = buildRankedFromReserves(reserves, "low");
+  const best = ranked[0];
+  return {
+    recommendation: best
+      ? `Best low-risk supply: ${best.asset} on Bonzo at ${best.riskAdjustedApy.toFixed(2)}% risk-adjusted APY (${best.rawApy.toFixed(2)}% raw).`
+      : "No active Bonzo supply markets matched the yield goal.",
+    ranked,
+    paymentTxId,
+    completedAt: new Date().toISOString(),
+  };
+}
+
 export async function executeYieldScoutRun(
   req: YieldScoutRunRequest
 ): Promise<YieldScoutRunResponse> {
@@ -87,7 +160,7 @@ export async function executeYieldScoutRun(
   fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:pre-runtime',message:'before buildHbarRuntime',data:{sessionId:req.sessionId,amountHbar},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
   // #endregion
 
-  const { toolkit } = buildHbarRuntime({
+  const { toolkit, spendPolicy } = buildHbarRuntime({
     sessionId: req.sessionId,
     budget: req.budget,
     approval: req.approval,
@@ -146,22 +219,85 @@ export async function executeYieldScoutRun(
       }
     }
 
-    const report =
-      parseYieldScoutReport(result.text, paymentTxId ?? req.paymentTxId) ??
-      ({
-        recommendation:
-          "Analysis completed — see ranked markets below (planner returned non-JSON; using fallback).",
-        ranked: [],
-        paymentTxId,
-        completedAt: new Date().toISOString(),
-      } satisfies YieldScoutReport);
+    const resolvedTxId = paymentTxId ?? req.paymentTxId;
+    const resolvedRecipient =
+      paymentRecipientId ?? counterparty.allowlist[0];
+    const resolvedAmount = paymentAmountHbar ?? amountHbar;
+
+    if (paymentTxId) {
+      spendPolicy.recordSuccessfulSpend(
+        resolvedAmount,
+        HBAR_STUB_PAY_TOOL,
+        resolvedRecipient
+      );
+      const auditTopic = process.env.HBAR_AUDIT_TOPIC_ID;
+      if (auditTopic) {
+        await logPolicyDecisionToHcs(auditTopic, {
+          sessionId: req.sessionId,
+          tool: HBAR_STUB_PAY_TOOL,
+          amountHbar: resolvedAmount,
+          decision: "allowed",
+          txId: paymentTxId,
+          agentId: "yield-scout",
+        });
+      }
+    }
+
+    const llmReport = parseYieldScoutReport(result.text, resolvedTxId);
+    const bonzoFromSteps = extractBonzoReservesFromSteps(result.steps);
+    let report: YieldScoutReport;
+    let reportSource: "llm" | "server-fallback" | "empty-fallback";
+
+    if (
+      llmReport &&
+      llmReport.ranked.length > 0 &&
+      !(paymentTxId && isPolicyFailureReport(llmReport))
+    ) {
+      report = llmReport;
+      reportSource = "llm";
+    } else if (bonzoFromSteps?.length) {
+      report = buildServerYieldScoutReport(bonzoFromSteps, resolvedTxId);
+      reportSource = "server-fallback";
+    } else {
+      try {
+        const reserves = await fetchBonzoReserves();
+        if (reserves.length > 0) {
+          report = buildServerYieldScoutReport(reserves, resolvedTxId);
+          reportSource = "server-fallback";
+        } else {
+          report = {
+            recommendation:
+              "Analysis completed but no Bonzo markets were available.",
+            ranked: [],
+            paymentTxId: resolvedTxId,
+            completedAt: new Date().toISOString(),
+          };
+          reportSource = "empty-fallback";
+        }
+      } catch {
+        report = {
+          recommendation:
+            llmReport && !isPolicyFailureReport(llmReport)
+              ? llmReport.recommendation
+              : "Analysis completed — market data could not be fetched for ranking.",
+          ranked: llmReport?.ranked ?? [],
+          paymentTxId: resolvedTxId,
+          completedAt: new Date().toISOString(),
+        };
+        reportSource = "empty-fallback";
+      }
+    }
+
+    // #region agent log
+    fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:report-built',message:'yield scout report assembled',data:{reportSource,paymentTxId:resolvedTxId,rankedCount:report.ranked.length,llmTextPreview:result.text.slice(0,200)},timestamp:Date.now(),hypothesisId:'H7',runId:'post-fix'})}).catch(()=>{});
+    // #endregion
 
     return {
       status: "success",
       report,
-      txId: paymentTxId ?? req.paymentTxId,
-      recipientId: paymentRecipientId ?? counterparty.allowlist[0],
-      amountHbar: paymentAmountHbar ?? amountHbar,
+      txId: resolvedTxId,
+      recipientId: resolvedRecipient,
+      amountHbar: resolvedAmount,
       policyState: "within policy",
     };
   } catch (error) {
