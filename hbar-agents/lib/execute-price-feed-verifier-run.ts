@@ -1,4 +1,4 @@
-import { buildHbarRuntime } from "./agent-runtime";
+import { buildHbarRuntime, normalizeHederaToolsForAiSdk } from "./agent-runtime";
 import { generateText, type CoreMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { BudgetConfig, ApprovalConfig } from "./policy-state";
@@ -124,7 +124,7 @@ export async function executePriceFeedVerifierRun(
     agentId: "price-feed-verifier",
   });
 
-  const tools = toolkit.getTools();
+  const tools = normalizeHederaToolsForAiSdk(toolkit.getTools());
   const intakeJson = JSON.stringify(req.intake);
   const messages: CoreMessage[] = [
     {

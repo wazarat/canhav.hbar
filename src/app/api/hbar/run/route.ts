@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { streamText, type CoreMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
-import { buildHbarRuntime, buildSystemPrompt } from "@hbar/lib/agent-runtime";
+import { buildHbarRuntime, buildSystemPrompt, normalizeHederaToolsForAiSdk } from "@hbar/lib/agent-runtime";
 import { stubAgentConfig, getStubCounterpartyConfig } from "@hbar/agents/stub/config";
 import {
   yieldScoutAgentConfig,
@@ -274,7 +274,7 @@ export async function POST(req: NextRequest) {
     agentId: "stub",
   });
 
-  const tools = toolkit.getTools();
+  const tools = normalizeHederaToolsForAiSdk(toolkit.getTools());
 
   const streamOpts: Parameters<typeof streamText>[0] = {
     model: openai("gpt-4o"),

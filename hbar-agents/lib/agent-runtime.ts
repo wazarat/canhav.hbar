@@ -124,6 +124,28 @@ export function buildHbarRuntime(config: HbarRuntimeConfig): BuiltRuntime {
   return { toolkit, spendPolicy, context };
 }
 
+/** HederaAIToolkit emits `inputSchema`; AI SDK v4 generateText expects `parameters`. */
+export function normalizeHederaToolsForAiSdk<T extends Record<string, unknown>>(
+  tools: T
+): T {
+  const normalized = {} as T;
+  for (const name of Object.keys(tools)) {
+    const toolDef = tools[name] as {
+      parameters?: unknown;
+      inputSchema?: unknown;
+    };
+    const schema = toolDef.parameters ?? toolDef.inputSchema;
+    if (!schema) {
+      throw new Error(`Hedera tool "${name}" is missing a Zod parameters schema`);
+    }
+    (normalized as Record<string, unknown>)[name] = {
+      ...toolDef,
+      parameters: schema,
+    };
+  }
+  return normalized;
+}
+
 export function defaultStubCounterpartyConfig(): CounterpartyConfig {
   const worker = getStubWorkerId();
   const operator = process.env.HEDERA_OPERATOR_ID ?? worker;

@@ -1,4 +1,4 @@
-import { buildHbarRuntime } from "./agent-runtime";
+import { buildHbarRuntime, normalizeHederaToolsForAiSdk } from "./agent-runtime";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { BudgetConfig, ApprovalConfig, CounterpartyConfig } from "./policy-state";
@@ -226,7 +226,7 @@ export async function executeCustomRun(
 
   const amountHbar = req.amountHbar ?? CUSTOM_TASK_PRICE_HBAR;
   const { toolkit, budget, counterparty } = buildCustomRuntime(req, spec);
-  const tools = toolkit.getTools();
+  const tools = normalizeHederaToolsForAiSdk(toolkit.getTools());
 
   if (spec.taskType === "write" && req.swapIntake) {
     const intake: SwapExecutorIntake = {

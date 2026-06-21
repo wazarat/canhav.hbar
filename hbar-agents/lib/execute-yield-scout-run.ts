@@ -1,4 +1,4 @@
-import { buildHbarRuntime } from "./agent-runtime";
+import { buildHbarRuntime, normalizeHederaToolsForAiSdk } from "./agent-runtime";
 import { generateText, type CoreMessage } from "ai";
 import { openai } from "@ai-sdk/openai";
 import type { BudgetConfig, ApprovalConfig } from "./policy-state";
@@ -96,7 +96,10 @@ export async function executeYieldScoutRun(
     agentId: "yield-scout",
   });
 
-  const tools = toolkit.getTools();
+  const tools = normalizeHederaToolsForAiSdk(toolkit.getTools());
+  // #region agent log
+  fetch('http://127.0.0.1:7765/ingest/2fa6e897-3794-44a7-8cb6-760966e0ebf6',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'55975b'},body:JSON.stringify({sessionId:'55975b',location:'execute-yield-scout-run.ts:tools-normalized',message:'tools normalized for AI SDK',data:{toolNames:Object.keys(tools),hasParameters:Object.fromEntries(Object.entries(tools).map(([k,v])=>[k,!!(v as {parameters?:unknown}).parameters]))},timestamp:Date.now(),hypothesisId:'H6',runId:'post-fix'})}).catch(()=>{});
+  // #endregion
   const messages: CoreMessage[] = [
     {
       role: "user",
