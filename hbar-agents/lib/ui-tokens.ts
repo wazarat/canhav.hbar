@@ -52,6 +52,11 @@ export const POLICY_BADGE: Record<
     className: hbarSkillsUi.status.rejected,
     icon: "✕",
   },
+  error: {
+    label: "error",
+    className: hbarSkillsUi.status.blocked,
+    icon: "⚠",
+  },
   "blocked: slippage exceeded": {
     label: "blocked: slippage exceeded",
     className: hbarSkillsUi.status.blocked,

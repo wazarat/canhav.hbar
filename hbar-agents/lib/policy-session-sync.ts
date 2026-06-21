@@ -9,13 +9,24 @@ export async function withPolicySession<T>(
   fn: () => Promise<T>
 ): Promise<T> {
   if (process.env.DATABASE_URL) {
-    await hydratePolicySessionFromDb(sessionId);
+    try {
+      await hydratePolicySessionFromDb(sessionId);
+    } catch (e) {
+      console.error(
+        "[policy-session] hydrate failed, continuing with in-memory state:",
+        e
+      );
+    }
   }
   try {
     return await fn();
   } finally {
     if (process.env.DATABASE_URL) {
-      await persistPolicySessionToDb(sessionId);
+      try {
+        await persistPolicySessionToDb(sessionId);
+      } catch (e) {
+        console.error("[policy-session] persist failed (non-fatal):", e);
+      }
     }
   }
 }

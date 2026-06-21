@@ -105,7 +105,7 @@ export async function executeYieldScoutRun(
   try {
     const result = await generateText({
       model: openai("gpt-4o"),
-      system: buildSystemPrompt("yield-scout", req.budget),
+      system: buildSystemPrompt("yield-scout", req.budget, undefined, amountHbar),
       messages,
       maxSteps: 8,
       temperature: 0.2,

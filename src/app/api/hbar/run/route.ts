@@ -33,6 +33,7 @@ function hashScanTopicUrl() {
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const body = await req.json();
   const sessionId =
     (body.sessionId as string | undefined) ??
@@ -289,4 +290,12 @@ export async function POST(req: NextRequest) {
   const result = streamText(streamOpts);
   return result.toDataStreamResponse();
   });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[/api/hbar/run] unhandled error:", err);
+    return NextResponse.json(
+      { status: "error", policyState: "error", reason: message },
+      { status: 500 }
+    );
+  }
 }

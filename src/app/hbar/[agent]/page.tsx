@@ -80,7 +80,41 @@ type PayResult = {
   recipientId?: string;
   amountHbar?: number;
   swapMetadata?: SwapQuotePreview;
+  error?: string;
 };
+
+type HbarApiResult<T extends PayResult = PayResult> =
+  | { ok: true; data: T }
+  | { ok: false; detail: string };
+
+async function parseHbarApiResponse<T extends PayResult>(
+  res: Response
+): Promise<HbarApiResult<T>> {
+  let data: T;
+  try {
+    data = (await res.json()) as T;
+  } catch {
+    return {
+      ok: false,
+      detail: res.ok
+        ? "Invalid response from server"
+        : `Request failed (HTTP ${res.status})`,
+    };
+  }
+  if (!res.ok) {
+    const detail =
+      (typeof data.reason === "string" && data.reason) ||
+      (typeof data.error === "string" && data.error) ||
+      `Request failed (HTTP ${res.status})`;
+    return { ok: false, detail };
+  }
+  return { ok: true, data };
+}
+
+function AgentErrorMessage({ error }: { error: string | null }) {
+  if (!error) return null;
+  return <p className="mt-4 text-sm text-red-400">⚠ {error}</p>;
+}
 
 function PolicyBadge({ policyState }: { policyState: string }) {
   const badge = POLICY_BADGE[policyState] ?? POLICY_BADGE["within policy"];
@@ -509,10 +543,12 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
   const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
   const runAgent = useCallback(async () => {
     setLoading(true);
     setRunResult(null);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/run", {
         method: "POST",
@@ -531,7 +567,15 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
           stream: false,
         }),
       });
-      const data = (await res.json()) as PayResult & { result?: Record<string, unknown> };
+      const parsed = await parseHbarApiResponse<
+        PayResult & { result?: Record<string, unknown> }
+      >(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? "within policy");
       setRunResult(data);
       if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
@@ -539,6 +583,9 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
         setPendingApproval(data);
         setApprovalOpen(true);
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -547,6 +594,7 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -563,7 +611,15 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
           paymentTxId,
         }),
       });
-      const data = (await res.json()) as PayResult & { result?: Record<string, unknown> };
+      const parsed = await parseHbarApiResponse<
+        PayResult & { result?: Record<string, unknown> }
+      >(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setRunResult(data);
       setApprovalOpen(false);
@@ -586,9 +642,17 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
             stream: false,
           }),
         });
-        const rerunData = (await rerun.json()) as PayResult;
-        setRunResult(rerunData);
+        const rerunParsed = await parseHbarApiResponse<PayResult>(rerun);
+        if (!rerunParsed.ok) {
+          setError(rerunParsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        setRunResult(rerunParsed.data);
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -639,6 +703,8 @@ function CustomSavedAgentRunner({ spec }: { spec: CustomAgentSpec }) {
           </Button>
         </div>
 
+        <AgentErrorMessage error={error} />
+
         {runResult?.result != null && (
           <Card className={`mt-6 ${hbarSkillsUi.surface}`}>
             <CardContent className="pt-6">
@@ -683,12 +749,14 @@ function YieldScoutRunner({ name }: { name: string }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
   const [testAmount, setTestAmount] = useState(YIELD_SCOUT_TASK_PRICE_HBAR);
+  const [error, setError] = useState<string | null>(null);
 
   const runScout = useCallback(
     async (amountHbar: number) => {
       setLoading(true);
       setReport(null);
       setLastResult(null);
+      setError(null);
       try {
         const res = await fetch("/api/hbar/run", {
           method: "POST",
@@ -706,9 +774,15 @@ function YieldScoutRunner({ name }: { name: string }) {
             stream: false,
           }),
         });
-        const data = (await res.json()) as PayResult & {
-          report?: YieldScoutReport;
-        };
+        const parsed = await parseHbarApiResponse<
+          PayResult & { report?: YieldScoutReport }
+        >(res);
+        if (!parsed.ok) {
+          setError(parsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        const data = parsed.data;
         setPolicyState(data.policyState ?? "within policy");
         setLastResult(data);
         if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
@@ -722,6 +796,9 @@ function YieldScoutRunner({ name }: { name: string }) {
         if (data.status === "success" && data.report) {
           setReport(data.report);
         }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Network error");
+        setPolicyState("error");
       } finally {
         setLoading(false);
       }
@@ -732,6 +809,7 @@ function YieldScoutRunner({ name }: { name: string }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -745,7 +823,13 @@ function YieldScoutRunner({ name }: { name: string }) {
           agentId: "yield-scout",
         }),
       });
-      const data = (await res.json()) as PayResult;
+      const parsed = await parseHbarApiResponse<PayResult>(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setLastResult(data);
       setApprovalOpen(false);
@@ -769,15 +853,24 @@ function YieldScoutRunner({ name }: { name: string }) {
             stream: false,
           }),
         });
-        const analysisData = (await analysisRes.json()) as PayResult & {
-          report?: YieldScoutReport;
-        };
+        const analysisParsed = await parseHbarApiResponse<
+          PayResult & { report?: YieldScoutReport }
+        >(analysisRes);
+        if (!analysisParsed.ok) {
+          setError(analysisParsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        const analysisData = analysisParsed.data;
         setPolicyState(analysisData.policyState ?? "within policy");
         setLastResult(analysisData);
         if (analysisData.status === "success" && analysisData.report) {
           setReport(analysisData.report);
         }
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -858,6 +951,8 @@ function YieldScoutRunner({ name }: { name: string }) {
             Test custom amount
           </Button>
         </div>
+
+        <AgentErrorMessage error={error} />
 
         {lastResult?.reason && lastResult.status === "blocked" && (
           <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
@@ -1073,6 +1168,7 @@ function SwapExecutorRunner({ name }: { name: string }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
   const [paymentTxId, setPaymentTxId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
 
   const intake: SwapExecutorIntake = useMemo(
     () => ({ tokenIn, tokenOut, amountIn, maxSlippagePct }),
@@ -1097,11 +1193,13 @@ function SwapExecutorRunner({ name }: { name: string }) {
           ...body,
         }),
       });
-      return (await res.json()) as PayResult & {
-        report?: SwapExecutionReport;
-        quote?: SwapQuotePreview;
-        swapTxId?: string;
-      };
+      return parseHbarApiResponse<
+        PayResult & {
+          report?: SwapExecutionReport;
+          quote?: SwapQuotePreview;
+          swapTxId?: string;
+        }
+      >(res);
     },
     [sessionId, budget, approval, intake]
   );
@@ -1135,9 +1233,18 @@ function SwapExecutorRunner({ name }: { name: string }) {
     setLoading(true);
     setSwapReport(null);
     setLastResult(null);
+    setError(null);
     try {
-      const data = await runApi({ quoteOnly: true });
-      handleRunResult(data);
+      const parsed = await runApi({ quoteOnly: true });
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      handleRunResult(parsed.data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1147,11 +1254,20 @@ function SwapExecutorRunner({ name }: { name: string }) {
     setLoading(true);
     setSwapReport(null);
     setLastResult(null);
+    setError(null);
     try {
-      const data = await runApi({
+      const parsed = await runApi({
         amountHbar: SWAP_EXECUTOR_TASK_PRICE_HBAR,
       });
-      handleRunResult(data);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      handleRunResult(parsed.data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1160,6 +1276,7 @@ function SwapExecutorRunner({ name }: { name: string }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -1175,10 +1292,18 @@ function SwapExecutorRunner({ name }: { name: string }) {
           paymentTxId,
         }),
       });
-      const data = (await res.json()) as PayResult & {
-        report?: SwapExecutionReport;
-        swapTxId?: string;
-      };
+      const parsed = await parseHbarApiResponse<
+        PayResult & {
+          report?: SwapExecutionReport;
+          swapTxId?: string;
+        }
+      >(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
 
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setLastResult(data);
@@ -1198,6 +1323,9 @@ function SwapExecutorRunner({ name }: { name: string }) {
       if (data.status === "success" && data.report) {
         setSwapReport(data.report);
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1295,6 +1423,8 @@ function SwapExecutorRunner({ name }: { name: string }) {
             Execute Swap ({SWAP_EXECUTOR_TASK_PRICE_HBAR} HBAR fee)
           </Button>
         </div>
+
+        <AgentErrorMessage error={error} />
 
         {lastResult?.reason && lastResult.status === "blocked" && (
           <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
@@ -1404,6 +1534,7 @@ function LpHealthRunner({ name }: { name: string }) {
   const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const intake: LpHealthIntake = useMemo(
     () => ({
@@ -1419,6 +1550,7 @@ function LpHealthRunner({ name }: { name: string }) {
       if (!opts.skipPayment) {
         setReport(null);
         setLastResult(null);
+        setError(null);
       }
       try {
         const res = await fetch("/api/hbar/run", {
@@ -1438,7 +1570,15 @@ function LpHealthRunner({ name }: { name: string }) {
             ...opts,
           }),
         });
-        const data = (await res.json()) as PayResult & { report?: LpHealthReport };
+        const parsed = await parseHbarApiResponse<
+          PayResult & { report?: LpHealthReport }
+        >(res);
+        if (!parsed.ok) {
+          setError(parsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        const data = parsed.data;
         setPolicyState(data.policyState ?? "within policy");
         setLastResult(data);
         if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
@@ -1452,6 +1592,9 @@ function LpHealthRunner({ name }: { name: string }) {
         if (data.status === "success" && data.report) {
           setReport(data.report);
         }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Network error");
+        setPolicyState("error");
       } finally {
         setLoading(false);
       }
@@ -1462,6 +1605,7 @@ function LpHealthRunner({ name }: { name: string }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -1475,7 +1619,13 @@ function LpHealthRunner({ name }: { name: string }) {
           agentId: "lp-health",
         }),
       });
-      const data = (await res.json()) as PayResult;
+      const parsed = await parseHbarApiResponse<PayResult>(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setLastResult(data);
       setApprovalOpen(false);
@@ -1484,6 +1634,9 @@ function LpHealthRunner({ name }: { name: string }) {
       if (approved && data.status === "success") {
         await runHealthCheck({ skipPayment: true, paymentTxId: data.txId });
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1585,6 +1738,8 @@ function LpHealthRunner({ name }: { name: string }) {
           </Button>
         </div>
 
+        <AgentErrorMessage error={error} />
+
         {lastResult?.reason && lastResult.status === "blocked" && (
           <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
         )}
@@ -1676,6 +1831,7 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
   const [hashScanTopicUrl, setHashScanTopicUrl] = useState<string | null>(null);
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const intake: PriceVerifierIntake = useMemo(
     () => ({ baseToken, quoteToken, referenceAmount, divergenceBps }),
@@ -1688,6 +1844,7 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
       if (!opts.skipPayment) {
         setReport(null);
         setLastResult(null);
+        setError(null);
       }
       try {
         const res = await fetch("/api/hbar/run", {
@@ -1707,9 +1864,15 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
             ...opts,
           }),
         });
-        const data = (await res.json()) as PayResult & {
-          report?: PriceVerifierReport;
-        };
+        const parsed = await parseHbarApiResponse<
+          PayResult & { report?: PriceVerifierReport }
+        >(res);
+        if (!parsed.ok) {
+          setError(parsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        const data = parsed.data;
         setPolicyState(data.policyState ?? "within policy");
         setLastResult(data);
         if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
@@ -1723,6 +1886,9 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
         if (data.status === "success" && data.report) {
           setReport(data.report);
         }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Network error");
+        setPolicyState("error");
       } finally {
         setLoading(false);
       }
@@ -1733,6 +1899,7 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -1746,7 +1913,13 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
           agentId: "price-feed-verifier",
         }),
       });
-      const data = (await res.json()) as PayResult;
+      const parsed = await parseHbarApiResponse<PayResult>(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setLastResult(data);
       setApprovalOpen(false);
@@ -1755,6 +1928,9 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
       if (approved) {
         await runVerifier({ skipPayment: true, paymentTxId: data.txId });
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1842,6 +2018,8 @@ function PriceFeedVerifierRunner({ name }: { name: string }) {
           </Button>
         </div>
 
+        <AgentErrorMessage error={error} />
+
         {lastResult?.reason && lastResult.status === "blocked" && (
           <p className="mt-4 text-sm text-red-400">{lastResult.reason}</p>
         )}
@@ -1877,11 +2055,13 @@ function StubAgentRunner({ name }: { name: string }) {
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [pendingApproval, setPendingApproval] = useState<PayResult | null>(null);
   const [testAmount, setTestAmount] = useState(STUB_TASK_PRICE_HBAR);
+  const [error, setError] = useState<string | null>(null);
 
   const runPay = useCallback(
     async (amountHbar: number) => {
       setLoading(true);
       setLastResult(null);
+      setError(null);
       try {
         const res = await fetch("/api/hbar/pay", {
           method: "POST",
@@ -1897,7 +2077,13 @@ function StubAgentRunner({ name }: { name: string }) {
             agentId: "stub",
           }),
         });
-        const data = (await res.json()) as PayResult;
+        const parsed = await parseHbarApiResponse<PayResult>(res);
+        if (!parsed.ok) {
+          setError(parsed.detail);
+          setPolicyState("error");
+          return;
+        }
+        const data = parsed.data;
         setPolicyState(data.policyState ?? "within policy");
         setLastResult(data);
         if (data.hashScanTopicUrl) setHashScanTopicUrl(data.hashScanTopicUrl);
@@ -1906,6 +2092,9 @@ function StubAgentRunner({ name }: { name: string }) {
           setPendingApproval(data);
           setApprovalOpen(true);
         }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Network error");
+        setPolicyState("error");
       } finally {
         setLoading(false);
       }
@@ -1916,6 +2105,7 @@ function StubAgentRunner({ name }: { name: string }) {
   const handleApprove = async (approved: boolean) => {
     if (!pendingApproval?.approvalId) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/hbar/approve", {
         method: "POST",
@@ -1929,11 +2119,20 @@ function StubAgentRunner({ name }: { name: string }) {
           agentId: "stub",
         }),
       });
-      const data = (await res.json()) as PayResult;
+      const parsed = await parseHbarApiResponse<PayResult>(res);
+      if (!parsed.ok) {
+        setError(parsed.detail);
+        setPolicyState("error");
+        return;
+      }
+      const data = parsed.data;
       setPolicyState(data.policyState ?? (approved ? "within policy" : "rejected"));
       setLastResult(data);
       setApprovalOpen(false);
       setPendingApproval(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Network error");
+      setPolicyState("error");
     } finally {
       setLoading(false);
     }
@@ -1993,6 +2192,8 @@ function StubAgentRunner({ name }: { name: string }) {
             Test custom amount
           </Button>
         </div>
+
+        <AgentErrorMessage error={error} />
 
         {lastResult && (
           <Card className={`mt-6 ${hbarSkillsUi.surface}`}>

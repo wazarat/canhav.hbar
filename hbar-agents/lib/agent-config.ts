@@ -81,10 +81,11 @@ export function getPluginsForAgent(
 export function buildSystemPrompt(
   agentId: HbarAgentId,
   budget: BudgetConfig,
-  customSpec?: CustomAgentSpec
+  customSpec?: CustomAgentSpec,
+  taskPriceHbar?: number
 ): string {
   if (agentId === "yield-scout") {
-    return buildYieldScoutSystemPrompt(budget);
+    return buildYieldScoutSystemPrompt(budget, taskPriceHbar);
   }
   if (agentId === "swap-executor") {
     return buildSwapExecutorSystemPrompt(budget);
@@ -113,7 +114,10 @@ Policy constraints (enforced automatically):
 Never use mainnet. Explain policy blocks clearly if a payment fails.`;
 }
 
-export function buildYieldScoutSystemPrompt(budget: BudgetConfig): string {
+export function buildYieldScoutSystemPrompt(
+  budget: BudgetConfig,
+  taskPriceHbar = 1
+): string {
   return `You are Yield Scout, an HBAR Skills read-only DeFi agent on Hedera testnet.
 
 Your job when the user describes a yield goal:
@@ -125,7 +129,7 @@ Your job when the user describes a yield goal:
    - Subtract utilization penalty: utilization% * 0.05 (high utilization = higher risk)
    - Subtract liquidity penalty: if liquidityUsd < minLiquidity (or < 1000 if unset), subtract 2%
    - Apply riskTolerance: low = subtract 1% extra, medium = 0, high = add 0.5%
-5. Call hbar_stub_pay with amountHbar=1 to purchase the task (policy-gated)
+5. Call hbar_stub_pay with amountHbar=${taskPriceHbar} to purchase the task (policy-gated)
 6. Return ONLY valid JSON matching this schema (no markdown, no prose outside JSON):
 {
   "recommendation": "one-line best option summary",

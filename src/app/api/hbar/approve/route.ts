@@ -31,6 +31,7 @@ function resolveDefaults(agentId: HbarAgentId) {
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const body = await req.json();
   const {
     approvalId,
@@ -237,4 +238,12 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ...payResult, hashScanTopicUrl });
   });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[/api/hbar/approve] unhandled error:", err);
+    return NextResponse.json(
+      { status: "error", policyState: "error", reason: message },
+      { status: 500 }
+    );
+  }
 }

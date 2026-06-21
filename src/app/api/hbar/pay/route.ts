@@ -63,6 +63,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Payment failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[/api/hbar/pay] unhandled error:", error);
+    return NextResponse.json(
+      { status: "error", policyState: "error", reason: message },
+      { status: 500 }
+    );
   }
 }
